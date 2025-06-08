@@ -50,7 +50,7 @@ app.use(express.urlencoded({ extended: true }))
 // Serve static files (QR codes)
 app.use("/qrcodes", express.static(path.join(__dirname, "public/qrcodes")))
 
-// Routes - with error handling
+// Routes - with error handling (MINIMAL TEST)
 console.log("Loading routes...")
 try {
   app.use("/api/auth", require("./routes/auth"))
@@ -59,6 +59,7 @@ try {
   console.error("❌ Error loading auth routes:", error.message)
 }
 
+/* TEMPORARILY DISABLED FOR DEBUGGING
 try {
   app.use("/api/user", require("./routes/user"))
   console.log("✅ User routes loaded")
@@ -100,6 +101,7 @@ try {
 } catch (error) {
   console.error("❌ Error loading admin analytics routes:", error.message)
 }
+*/
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
