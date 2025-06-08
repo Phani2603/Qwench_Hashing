@@ -38,7 +38,7 @@ export default function VerifyQRCode() {
   const [loading, setLoading] = useState(true)
   const [verification, setVerification] = useState<VerificationResponse | null>(null)
   const [error, setError] = useState("")
-  const [countdown, setCountdown] = useState(3)
+  const [countdown, setCountdown] = useState(5)
   const [redirecting, setRedirecting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [scanLogged, setScanLogged] = useState(false)
@@ -135,7 +135,7 @@ export default function VerifyQRCode() {
       // Progress bar animation (updates every 100ms for smooth animation)
       progressTimer = setInterval(() => {
         setProgress((prev) => {
-          const newProgress = prev + (100 / 30) // 3 seconds = 30 intervals of 100ms
+          const newProgress = prev + (100 / 20) // 5 seconds = 50 intervals of 100ms
           return newProgress >= 100 ? 100 : newProgress
         })
       }, 100)
@@ -252,7 +252,7 @@ export default function VerifyQRCode() {
               {/* Countdown and Redirect */}
               {verification.qrCode?.websiteURL && !redirecting ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-center space-x-3 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                  <div className="flex items-center justify-center space-x-3 p-4 bg-blue-50 dark:bg-black-900/40 rounded-xl">
                     <Clock className="h-5 w-5 text-blue-500" />
                     <span className="text-blue-700 dark:text-blue-300 font-medium">
                       Redirecting in {countdown} second{countdown !== 1 ? 's' : ''}...
