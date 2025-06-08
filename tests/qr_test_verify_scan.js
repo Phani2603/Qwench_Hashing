@@ -237,29 +237,27 @@ class QRTestSuite {
       return false
     }
   }
-
-  // Test 4: Frontend Scan Page Accessibility
-  async testFrontendScanPage() {
+  // Test 4: Frontend Verify Page Accessibility
+  async testFrontendVerifyPage() {
     try {
-      this.log('TEST 4: Testing frontend scan page accessibility...')
+      this.log('TEST 4: Testing frontend verify page accessibility...')
 
-      const response = await axios.get(`${config.FRONTEND_URL}/scan/${this.testQRCodeId}`, {
+      const response = await axios.get(`${config.FRONTEND_URL}/verify/${this.testQRCodeId}`, {
         timeout: config.TIMEOUT,
         headers: {
           'User-Agent': 'QR-Test-Suite/1.0 (Test Environment)'
         }
       })
 
-      if (response.status === 200 && response.data.includes('QR Code Scan')) {
-        this.log('✅ Frontend scan page is accessible', 'success')
-        this.log(`   Page URL: ${config.FRONTEND_URL}/scan/${this.testQRCodeId}`, 'info')
+      if (response.status === 200 && response.data.includes('QR Code Verification')) {
+        this.log('✅ Frontend verify page is accessible', 'success')
+        this.log(`   Page URL: ${config.FRONTEND_URL}/verify/${this.testQRCodeId}`, 'info')
         return true
       } else {
-        this.log('❌ Frontend scan page not accessible or invalid content', 'error')
+        this.log('❌ Frontend verify page not accessible or invalid content', 'error')
         return false
       }
-    } catch (error) {
-      this.log(`❌ Frontend scan page test failed: ${error.message}`, 'error')
+    } catch (error) {      this.log(`❌ Frontend verify page test failed: ${error.message}`, 'error')
       return false
     }
   }
@@ -367,33 +365,42 @@ class QRTestSuite {
       } else {
         this.log('   ❌ Step 1: Backend scan redirect not working', 'error')
         return false
-      }
-
-      // Step 2: Frontend page loads and calls scan-verify
-      this.log('   Step 2: Simulating frontend scan-verify call...')
-      const scanVerifyResponse = await axios.post(`${config.BACKEND_URL}/api/qrcodes/scan-verify/${this.testQRCodeId}`, {}, {
-        headers: {
-          'User-Agent': 'Complete-Flow-Test/1.0 (Simulation)',
-          'X-Forwarded-For': '192.168.1.101'
-        },
+      }      // Step 2: Frontend page loads and calls verify endpoint then logs scan
+      this.log('   Step 2: Simulating frontend verify call...')
+      const verifyResponse = await axios.get(`${config.BACKEND_URL}/api/qrcodes/verify/${this.testQRCodeId}`, {
         timeout: config.TIMEOUT
       })
 
-      if (scanVerifyResponse.data.success && scanVerifyResponse.data.qrCode) {
-        this.log('   ✅ Step 2: Frontend scan-verify successful', 'success')
-        this.log(`   Website to redirect to: ${scanVerifyResponse.data.qrCode.websiteURL}`, 'info')
-      } else {
-        this.log('   ❌ Step 2: Frontend scan-verify failed', 'error')
-        return false
-      }
+      if (verifyResponse.data.success && verifyResponse.data.qrCode) {
+        this.log('   ✅ Step 2a: Frontend verify successful', 'success')
+        
+        // Step 3: Log the scan
+        this.log('   Step 3: Simulating scan logging...')
+        const scanLogResponse = await axios.post(`${config.BACKEND_URL}/api/qrcodes/verify/${this.testQRCodeId}/scan`, {}, {
+          headers: {
+            'User-Agent': 'Complete-Flow-Test/1.0 (Simulation)',
+            'X-Forwarded-For': '192.168.1.101'
+          },
+          timeout: config.TIMEOUT
+        })
 
-      // Step 3: Simulate 3-second wait and redirect
-      this.log('   Step 3: Simulating 3-second countdown and redirect...')
+        if (scanLogResponse.data.success) {
+          this.log('   ✅ Step 3: Scan logging successful', 'success')
+          this.log(`   Website to redirect to: ${verifyResponse.data.qrCode.websiteURL}`, 'info')
+        } else {
+          this.log('   ❌ Step 3: Scan logging failed', 'error')
+          return false
+        }
+      } else {
+        this.log('   ❌ Step 2: Frontend verify failed', 'error')
+        return false
+      }      // Step 4: Simulate 3-second wait and redirect
+      this.log('   Step 4: Simulating 3-second countdown and redirect...')
       for (let i = 3; i > 0; i--) {
         this.log(`   Countdown: ${i} seconds...`, 'info')
         await this.wait(1000)
       }
-      this.log('   ✅ Step 3: Countdown complete, would redirect to website', 'success')
+      this.log('   ✅ Step 4: Countdown complete, would redirect to website', 'success')
 
       this.log('✅ Complete flow simulation successful', 'success')
       return true
@@ -438,7 +445,7 @@ class QRTestSuite {
       { name: 'QR Code Generation', method: 'testQRGeneration' },
       { name: 'QR Verification Endpoint', method: 'testQRVerification' },
       { name: 'Enhanced Scan-Verify Endpoint', method: 'testScanVerifyEndpoint' },
-      { name: 'Frontend Scan Page', method: 'testFrontendScanPage' },
+      { name: 'Frontend Verify Page', method: 'testFrontendVerifyPage' },
       { name: 'Scan Analytics', method: 'testScanAnalytics' },
       { name: 'Invalid QR Handling', method: 'testInvalidQRHandling' },
       { name: 'Complete Flow Simulation', method: 'testCompleteFlow' }
@@ -489,12 +496,10 @@ class QRTestSuite {
       console.log(chalk.green('\n🎉 ALL TESTS PASSED! Enhanced QR verification system is working correctly.'))
     } else {
       console.log(chalk.red('\n⚠️ Some tests failed. Please review the errors above.'))
-    }
-
-    if (this.testQRCodeId) {
+    }    if (this.testQRCodeId) {
       console.log(chalk.blue(`\n🔗 Test QR Code ID: ${this.testQRCodeId}`))
-      console.log(chalk.blue(`🔗 Test Scan URL: ${config.FRONTEND_URL}/scan/${this.testQRCodeId}`))
       console.log(chalk.blue(`🔗 Test Verify URL: ${config.FRONTEND_URL}/verify/${this.testQRCodeId}`))
+      console.log(chalk.blue(`🔗 Backend Scan Entry: ${config.BACKEND_URL}/api/qrcodes/scan/${this.testQRCodeId}`))
     }
 
     return results.failed === 0

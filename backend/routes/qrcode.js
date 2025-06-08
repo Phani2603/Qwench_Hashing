@@ -22,7 +22,7 @@ if (!fs.existsSync(qrCodeDir)) {
 
 // ========= PUBLIC ROUTES FIRST (NO AUTHENTICATION) =========
 
-// Verify QR code (public route) - used by frontend verification page
+// Verify QR code (public route) - enhanced to include scan logging and website data
 // IMPORTANT: Define before other routes with parameters to ensure correct matching
 router.get("/verify/:codeId", async (req, res) => {
   try {
@@ -51,6 +51,8 @@ router.get("/verify/:codeId", async (req, res) => {
       valid: true,
       qrCode: {
         codeId: qrCode.codeId,
+        websiteURL: qrCode.websiteURL,
+        websiteTitle: qrCode.websiteTitle,
         assignedTo: {
           name: qrCode.assignedTo.name,
           email: qrCode.assignedTo.email,
@@ -59,6 +61,7 @@ router.get("/verify/:codeId", async (req, res) => {
           name: qrCode.category.name,
           color: qrCode.category.color,
         },
+        scanCount: qrCode.scanCount,
         createdAt: qrCode.createdAt,
       },
     })
@@ -72,24 +75,20 @@ router.get("/verify/:codeId", async (req, res) => {
     })  }
 })
 
-// Scan and verify QR code (public route) - used by frontend scan page for enhanced verification
-// This endpoint both verifies the QR code AND logs the scan, then returns data for the verification page
-router.post("/scan-verify/:codeId", async (req, res) => {
+// Log scan for verified QR code (public route) - POST endpoint for logging scans
+router.post("/verify/:codeId/scan", async (req, res) => {
   try {
     const { codeId } = req.params
 
-    console.log(`QR Code scan-verify attempt for: ${codeId}`) // Debug log
+    console.log(`QR Code scan logging for: ${codeId}`) // Debug log
 
     // Find the QR code
     const qrCode = await QRCode.findOne({ codeId, isActive: true })
-      .populate("assignedTo", "name email")
-      .populate("category", "name color")
 
     if (!qrCode) {
-      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
+      console.log(`QR Code not found or inactive for scan logging: ${codeId}`) // Debug log
       return res.status(404).json({
         success: false,
-        valid: false,
         message: "QR code not found or has been deactivated",
       })
     }
@@ -131,32 +130,16 @@ router.post("/scan-verify/:codeId", async (req, res) => {
 
     console.log(`QR Code scan logged successfully: ${codeId}`) // Debug log
 
-    // Return the QR code data for the verification page
     res.json({
       success: true,
-      valid: true,
-      qrCode: {
-        codeId: qrCode.codeId,
-        websiteURL: qrCode.websiteURL,
-        websiteTitle: qrCode.websiteTitle,
-        assignedTo: {
-          name: qrCode.assignedTo.name,
-          email: qrCode.assignedTo.email,
-        },
-        category: {
-          name: qrCode.category.name,
-          color: qrCode.category.color,
-        },
-        scanCount: qrCode.scanCount + 1, // Include the updated scan count
-        createdAt: qrCode.createdAt,
-      },
+      message: "Scan logged successfully",
+      newScanCount: qrCode.scanCount + 1,
     })
   } catch (error) {
-    console.error("Error processing scan-verify:", error)
+    console.error("Error logging scan:", error)
     res.status(500).json({
       success: false,
-      valid: false,
-      message: "Error processing QR code scan",
+      message: "Error logging scan",
       error: error.message,
     })
   }
@@ -207,10 +190,10 @@ router.get("/scan/:codeId", async (req, res) => {
     // Get the frontend URL from environment variables
     const frontendUrl = process.env.FRONTEND_URL || process.env.QR_BASE_URL || 'http://localhost:3000'
     
-    console.log(`Redirecting to frontend scan page: ${frontendUrl}/scan/${codeId}`) // Debug log
+    console.log(`Redirecting to frontend verify page: ${frontendUrl}/verify/${codeId}`) // Debug log
 
-    // Redirect to the frontend scan page which will handle the enhanced verification
-    res.redirect(302, `${frontendUrl}/scan/${codeId}`)
+    // Redirect to the frontend verify page which will handle the enhanced verification
+    res.redirect(302, `${frontendUrl}/verify/${codeId}`)
   } catch (error) {
     console.error("Error processing QR scan:", error)
     res.status(500).send(`
