@@ -85,6 +85,9 @@ app.get("/api/cors-test", (req, res) => {
 
 // Routes - with error handling (MINIMAL TEST)
 console.log("Loading routes...")
+console.log("✅ Routes section reached - No auth routes loaded for testing")
+
+/* TEMPORARILY DISABLED FOR DEBUGGING
 try {
   app.use("/api/auth", require("./routes/auth"))
   console.log("✅ Auth routes loaded")
