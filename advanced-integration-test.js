@@ -244,10 +244,17 @@ async function testSecurityFeatures() {
 // Main test runner
 async function runAdvancedIntegrationTests() {
   console.log(`🔗 Testing against: ${API_BASE}\n`);
-  
-  // Load environment variables
+    // Load environment variables based on NODE_ENV
   require('dotenv').config({ path: './backend/.env' });
-  require('dotenv').config({ path: './.env.local' });
+  
+  // Load appropriate environment file based on environment
+  if (process.env.NODE_ENV === 'production') {
+    require('dotenv').config({ path: './.env.production' });
+    console.log('📌 Using production environment variables');
+  } else {
+    require('dotenv').config({ path: './.env.local' });
+    console.log('📌 Using local development environment variables');
+  }
   
   // Run all tests in sequence
   const userData = await testUserRegistrationFlow();
