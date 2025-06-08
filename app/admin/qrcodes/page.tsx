@@ -533,7 +533,7 @@ function QRCodeManagementContent() {
               <CardDescription>Search, filter, and manage QR codes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -583,7 +583,7 @@ function QRCodeManagementContent() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full">
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-3 px-4">Website</th>

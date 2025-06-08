@@ -509,7 +509,7 @@ function CategoryManagementContent() {
               {categories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">No categories have been created yet.</div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {categories.map((category) => (
                     <Card key={category._id} className="bg-muted/50">
                       <CardHeader className="pb-3">
