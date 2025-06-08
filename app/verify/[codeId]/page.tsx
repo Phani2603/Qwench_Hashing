@@ -42,23 +42,29 @@ export default function VerifyQRCode() {
   const [redirecting, setRedirecting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [scanLogged, setScanLogged] = useState(false)
-
   useEffect(() => {
     const verifyQRCode = async () => {
       try {
+        console.log(`🔍 Starting verification for code: ${codeId}`);
         const response = await fetch(`${API_BASE_URL}/qrcodes/verify/${codeId}`)
         const data = await response.json()
+        
+        console.log('🔍 Verification response:', data);
 
         if (response.ok && data.valid) {
+          console.log('✅ QR Code is valid:', data.qrCode);
+          console.log('🌐 Website URL:', data.qrCode?.websiteURL);
+          console.log('📄 Website Title:', data.qrCode?.websiteTitle);
           setVerification(data)
           // Log the scan after successful verification
           logScan()
         } else {
+          console.log('❌ QR Code is invalid:', data);
           setVerification(data)
           setError(data.message || "QR code is invalid or not found")
         }
       } catch (err) {
-        console.error("Error verifying QR code:", err)
+        console.error("❌ Error verifying QR code:", err)
         setError("Failed to verify QR code")
         setVerification({
           success: false,
@@ -92,19 +98,22 @@ export default function VerifyQRCode() {
       verifyQRCode()
     }
   }, [codeId])
-
   // Countdown and redirect logic
   useEffect(() => {
+    console.log('🔄 Countdown effect triggered. Verification:', verification);
+    console.log('🔄 Website URL available:', verification?.qrCode?.websiteURL);
+    
     if (verification?.valid && verification.qrCode?.websiteURL) {
+      console.log('🚀 Starting countdown for redirect to:', verification.qrCode.websiteURL);
       let timer: NodeJS.Timeout | null = null
       let progressTimer: NodeJS.Timeout | null = null
 
       // Main countdown timer
       timer = setInterval(() => {
         setCountdown((prev) => {
-          console.log('Countdown:', prev) // Debug log
+          console.log('⏰ Countdown:', prev); // Debug log
           if (prev <= 1) {
-            console.log('Redirecting to:', verification.qrCode!.websiteURL) // Debug log
+            console.log('🔗 Redirecting to:', verification.qrCode!.websiteURL); // Debug log
             setRedirecting(true)
             
             // Clear timers before redirect
@@ -113,6 +122,7 @@ export default function VerifyQRCode() {
             
             // Redirect after a small delay to ensure state updates
             setTimeout(() => {
+              console.log('🌐 Executing redirect to:', verification.qrCode!.websiteURL);
               window.location.href = verification.qrCode!.websiteURL
             }, 100)
             
@@ -131,25 +141,30 @@ export default function VerifyQRCode() {
       }, 100)
 
       return () => {
+        console.log('🧹 Cleaning up timers');
         if (timer) clearInterval(timer)
         if (progressTimer) clearInterval(progressTimer)
       }
+    } else {
+      console.log('⚠️ Countdown not started. Valid:', verification?.valid, 'URL:', verification?.qrCode?.websiteURL);
     }
   }, [verification])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
-  
-  const redirectNow = () => {
+    const redirectNow = () => {
     if (verification?.qrCode?.websiteURL) {
-      console.log('Manual redirect to:', verification.qrCode.websiteURL) // Debug log
+      console.log('👆 Manual redirect triggered to:', verification.qrCode.websiteURL); // Debug log
       setRedirecting(true)
       
       // Add a small delay to ensure state updates
       setTimeout(() => {
+        console.log('🌐 Executing manual redirect to:', verification.qrCode!.websiteURL);
         window.location.href = verification.qrCode!.websiteURL
       }, 100)
+    } else {
+      console.error('❌ No website URL available for redirect');
     }
   }
 

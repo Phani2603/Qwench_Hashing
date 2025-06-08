@@ -533,20 +533,18 @@
             if (!testQRCodeId) {
                 showResult('frontend-result', '❌ Please generate a QR code first', 'error');
                 return false;
-            }
-
-            updateStatus('frontend', 'running');
-            showResult('frontend-result', '🔄 Testing frontend scan page accessibility...', 'info');
+            }            updateStatus('frontend', 'running');
+            showResult('frontend-result', '🔄 Testing frontend verification page accessibility...', 'info');
             
             try {
-                const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
+                const scanUrl = `${getFrontendUrl()}/verify/${testQRCodeId}`;
                 const response = await fetch(scanUrl);
                 
                 if (response.ok) {
                     const html = await response.text();
-                    if (html.includes('QR Code Scan') || html.includes('Verifying') || html.includes('scan')) {
+                    if (html.includes('QR Code Verification') || html.includes('Verifying') || html.includes('verify')) {
                         updateStatus('frontend', 'ready');
-                        showResult('frontend-result', `✅ Frontend scan page accessible!\\n🔗 Scan URL: ${scanUrl}\\n📊 HTTP Status: ${response.status}\\n📄 Content detected: QR scan page`, 'success');
+                        showResult('frontend-result', `✅ Frontend verification page accessible!\\n🔗 Verification URL: ${scanUrl}\\n📊 HTTP Status: ${response.status}\\n📄 Content detected: QR verification page`, 'success');
                         return true;
                     } else {
                         updateStatus('frontend', 'failed');
@@ -710,21 +708,17 @@
             if (!testQRCodeId) {
                 alert('Please generate a QR code first');
                 return;
-            }
-
-            const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
-            showResult('flow-result', `🚀 Opening scan page to demonstrate countdown...\\n🔗 URL: ${scanUrl}\\n⏱️ You should see a 3-second countdown with progress bar\\n🎯 Followed by auto-redirect to the target website`, 'info');
+            }            const scanUrl = `${getFrontendUrl()}/verify/${testQRCodeId}`;
+            showResult('flow-result', `🚀 Opening verification page to demonstrate countdown...\\n🔗 URL: ${scanUrl}\\n⏱️ You should see a 3-second countdown with progress bar\\n🎯 Followed by auto-redirect to the target website`, 'info');
             
             window.open(scanUrl, '_blank');
-        }
-
-        function openScanPage() {
+        }        function openScanPage() {
             if (!testQRCodeId) {
                 alert('Please generate a QR code first');
                 return;
             }
 
-            const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
+            const scanUrl = `${getFrontendUrl()}/verify/${testQRCodeId}`;
             window.open(scanUrl, '_blank');
         }
 

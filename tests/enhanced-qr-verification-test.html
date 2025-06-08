@@ -202,15 +202,14 @@
 
         async function testScanRedirect() {
             showResult('scan-redirect-result', '🔄 Testing scan redirect functionality...', 'info');
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/qrcodes/scan/test-code-123`, {
+            try {                const response = await fetch(`${BACKEND_URL}/api/qrcodes/scan/test-code-123`, {
                     method: 'GET',
                     redirect: 'manual'  // Don't follow redirects automatically
                 });
                 
                 if (response.status === 302) {
                     const location = response.headers.get('location');
-                    if (location && location.includes('/scan/test-code-123')) {
+                    if (location && location.includes('/verify/test-code-123')) {
                         showResult('scan-redirect-result', `✅ Scan redirect is working! Redirects to: ${location}`, 'success');
                     } else {
                         showResult('scan-redirect-result', `⚠️ Redirect working but unexpected target: ${location}`, 'info');
@@ -223,13 +222,11 @@
             } catch (error) {
                 showResult('scan-redirect-result', `❌ Scan redirect test failed: ${error.message}`, 'error');
             }
-        }
-
-        function openEnhancedScanPage() {
-            showResult('frontend-result', '🔄 Opening enhanced scan page...', 'info');
-            const testUrl = `${FRONTEND_URL}/scan/test-demo-code`;
+        }        function openEnhancedScanPage() {
+            showResult('frontend-result', '🔄 Opening enhanced verification page...', 'info');
+            const testUrl = `${FRONTEND_URL}/verify/test-demo-code`;
             window.open(testUrl, '_blank');
-            showResult('frontend-result', `✅ Enhanced scan page opened! URL: ${testUrl}`, 'success');
+            showResult('frontend-result', `✅ Enhanced verification page opened! URL: ${testUrl}`, 'success');
         }
 
         async function testCompleteFlow() {
