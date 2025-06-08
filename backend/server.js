@@ -50,14 +50,56 @@ app.use(express.urlencoded({ extended: true }))
 // Serve static files (QR codes)
 app.use("/qrcodes", express.static(path.join(__dirname, "public/qrcodes")))
 
-// Routes
-app.use("/api/auth", require("./routes/auth"))
-app.use("/api/user", require("./routes/user"))
-app.use("/api/admin", require("./routes/admin"))
-app.use("/api/qrcodes", require("./routes/qrcode"))
-app.use("/api/categories", require("./routes/category"))
-app.use("/api/scans", require("./routes/scan"))
-app.use("/api/admin/analytics", require("./routes/admin-analytics"))
+// Routes - with error handling
+console.log("Loading routes...")
+try {
+  app.use("/api/auth", require("./routes/auth"))
+  console.log("✅ Auth routes loaded")
+} catch (error) {
+  console.error("❌ Error loading auth routes:", error.message)
+}
+
+try {
+  app.use("/api/user", require("./routes/user"))
+  console.log("✅ User routes loaded")
+} catch (error) {
+  console.error("❌ Error loading user routes:", error.message)
+}
+
+try {
+  app.use("/api/admin", require("./routes/admin"))
+  console.log("✅ Admin routes loaded")
+} catch (error) {
+  console.error("❌ Error loading admin routes:", error.message)
+}
+
+try {
+  app.use("/api/qrcodes", require("./routes/qrcode"))
+  console.log("✅ QR code routes loaded")
+} catch (error) {
+  console.error("❌ Error loading QR code routes:", error.message)
+}
+
+try {
+  app.use("/api/categories", require("./routes/category"))
+  console.log("✅ Category routes loaded")
+} catch (error) {
+  console.error("❌ Error loading category routes:", error.message)
+}
+
+try {
+  app.use("/api/scans", require("./routes/scan"))
+  console.log("✅ Scan routes loaded")
+} catch (error) {
+  console.error("❌ Error loading scan routes:", error.message)
+}
+
+try {
+  app.use("/api/admin/analytics", require("./routes/admin-analytics"))
+  console.log("✅ Admin analytics routes loaded")
+} catch (error) {
+  console.error("❌ Error loading admin analytics routes:", error.message)
+}
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
