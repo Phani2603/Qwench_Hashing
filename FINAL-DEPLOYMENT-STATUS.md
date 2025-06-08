@@ -2,7 +2,7 @@
 
 **Date**: June 8, 2025  
 **Deployment Method**: Vercel (Frontend) + Railway (Backend) + MongoDB Atlas (Database)  
-**Status**: ✅ **SUCCESSFULLY DEPLOYED**
+**Status**: 🔄 **DEPLOYMENT IN PROGRESS - RESOLVING VERCEL ISSUE**
 
 ---
 
@@ -15,11 +15,12 @@
 - **Environment**: Production
 - **Port**: 8080
 
-### ✅ **Frontend Deployment (Vercel)**
+### 🔄 **Frontend Deployment (Vercel)**
 - **URL**: `https://quench-rbac-frontend-7007f4nez-phani2603s-projects.vercel.app`
-- **Status**: ✅ **DEPLOYED & ACCESSIBLE**
+- **Status**: 🔄 **RESOLVING DEPENDENCY CONFLICT**
 - **Environment**: Production
-- **API Connection**: ✅ Connected to Railway backend
+- **Issue**: Dependency conflict between `date-fns@4.1.0` and `react-day-picker@8.10.1`
+- **Fix Applied**: Updated to `date-fns@3.6.0` to match peer dependency requirements
 
 ### ✅ **Database (MongoDB Atlas)**
 - **Cluster**: `cluster0.vuqmhtp.mongodb.net`
