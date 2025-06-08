@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced QR Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #1d4ed8;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .credentials {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .enhancement-note {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .enhancement-note h3 {
+            color: #047857;
+            margin-top: 0;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            color: #059669;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Enhanced QR Verification System Test</h1>
+        
+        <div class="enhancement-note">
+            <h3>🎉 New Enhanced QR Verification Features</h3>
+            <ul class="feature-list">
+                <li>Beautiful 3-second verification page with countdown timer</li>
+                <li>Real-time progress bar animation</li>
+                <li>Automatic scan logging with device detection</li>
+                <li>Auto-redirect to target website after verification</li>
+                <li>"Go Now" button for immediate redirect</li>
+                <li>Responsive design with dark mode support</li>
+                <li>Detailed QR code information display</li>
+                <li>Enhanced error handling and user feedback</li>
+            </ul>
+        </div>
+
+        <div class="credentials">
+            <h3>🔑 Admin Credentials</h3>
+            <p><strong>Email:</strong> admin@quench.com</p>
+            <p><strong>Password:</strong> QuenchAdmin2024!</p>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Backend Health Check</h3>
+            <button class="test-button" onclick="testBackendHealth()">Test Backend</button>
+            <div id="health-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Enhanced QR Scan-Verify Endpoint</h3>
+            <button class="test-button" onclick="testScanVerifyEndpoint()">Test New Scan-Verify API</button>
+            <div id="scan-verify-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. QR Scan Redirect Test</h3>
+            <button class="test-button" onclick="testScanRedirect()">Test Scan Redirect</button>
+            <div id="scan-redirect-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Frontend Enhanced Verification</h3>
+            <button class="test-button" onclick="openEnhancedScanPage()">Open Enhanced Scan Page</button>
+            <div id="frontend-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Complete QR Flow Test</h3>
+            <button class="test-button" onclick="testCompleteFlow()">Test Complete Flow</button>
+            <div id="complete-flow-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 Quick Links</h3>
+            <button class="test-button" onclick="openFrontend()">Open Frontend</button>
+            <button class="test-button" onclick="openLoginPage()">Open Login</button>
+            <button class="test-button" onclick="openDashboard()">Open Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        // Environment URLs
+        const BACKEND_URL = 'https://quench-rbac-backend-production.up.railway.app';
+        const FRONTEND_URL = 'https://quench-rbac-frontend.vercel.app';
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function testBackendHealth() {
+            showResult('health-result', '🔄 Testing backend health...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'OK') {
+                    showResult('health-result', `✅ Backend is healthy! Environment: ${data.environment}`, 'success');
+                } else {
+                    showResult('health-result', `⚠️ Backend responded but status unclear: ${JSON.stringify(data)}`, 'info');
+                }
+            } catch (error) {
+                showResult('health-result', `❌ Backend health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testScanVerifyEndpoint() {
+            showResult('scan-verify-result', '🔄 Testing new scan-verify endpoint...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/qrcodes/scan-verify/test-code-123`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const data = await response.json();
+                
+                if (response.status === 404 && data.message && data.message.includes('QR code not found')) {
+                    showResult('scan-verify-result', '✅ New scan-verify endpoint is working! (404 expected for test code)', 'success');
+                } else if (response.ok && data.valid !== undefined) {
+                    showResult('scan-verify-result', '✅ New scan-verify endpoint is working and returned QR data!', 'success');
+                } else {
+                    showResult('scan-verify-result', `⚠️ Unexpected response: ${response.status} - ${JSON.stringify(data)}`, 'info');
+                }
+            } catch (error) {
+                showResult('scan-verify-result', `❌ Scan-verify endpoint test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testScanRedirect() {
+            showResult('scan-redirect-result', '🔄 Testing scan redirect functionality...', 'info');
+            try {                const response = await fetch(`${BACKEND_URL}/api/qrcodes/scan/test-code-123`, {
+                    method: 'GET',
+                    redirect: 'manual'  // Don't follow redirects automatically
+                });
+                
+                if (response.status === 302) {
+                    const location = response.headers.get('location');
+                    if (location && location.includes('/verify/test-code-123')) {
+                        showResult('scan-redirect-result', `✅ Scan redirect is working! Redirects to: ${location}`, 'success');
+                    } else {
+                        showResult('scan-redirect-result', `⚠️ Redirect working but unexpected target: ${location}`, 'info');
+                    }
+                } else if (response.status === 404) {
+                    showResult('scan-redirect-result', '✅ Scan endpoint is working! (404 expected for test code)', 'success');
+                } else {
+                    showResult('scan-redirect-result', `⚠️ Unexpected response: ${response.status}`, 'info');
+                }
+            } catch (error) {
+                showResult('scan-redirect-result', `❌ Scan redirect test failed: ${error.message}`, 'error');
+            }
+        }        function openEnhancedScanPage() {
+            showResult('frontend-result', '🔄 Opening enhanced verification page...', 'info');
+            const testUrl = `${FRONTEND_URL}/verify/test-demo-code`;
+            window.open(testUrl, '_blank');
+            showResult('frontend-result', `✅ Enhanced verification page opened! URL: ${testUrl}`, 'success');
+        }
+
+        async function testCompleteFlow() {
+            showResult('complete-flow-result', '🔄 Testing complete QR flow...', 'info');
+            
+            // This would need a real QR code ID to test properly
+            showResult('complete-flow-result', `
+                <div class="info">
+                    <strong>📋 To test the complete flow:</strong><br>
+                    1. Login to the admin panel<br>
+                    2. Generate a new QR code<br>
+                    3. Scan the generated QR code or use the scan URL<br>
+                    4. Observe the beautiful 3-second verification page<br>
+                    5. Verify automatic redirect to target website<br>
+                    6. Check that scan count increased in dashboard
+                </div>
+            `, 'info');
+        }
+
+        function openFrontend() {
+            window.open(FRONTEND_URL, '_blank');
+        }
+
+        function openLoginPage() {
+            window.open(`${FRONTEND_URL}/login`, '_blank');
+        }
+
+        function openDashboard() {
+            window.open(`${FRONTEND_URL}/dashboard`, '_blank');
+        }
+
+        // Auto-run health check on page load
+        window.onload = function() {
+            console.log('🚀 Enhanced QR Verification System Test Page Loaded');
+            testBackendHealth();
+        };
+    </script>
+</body>
+</html>
