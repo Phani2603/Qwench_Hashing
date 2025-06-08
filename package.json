@@ -49,6 +49,7 @@
     "motion": "^12.16.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
+    "node-fetch": "^2.7.0",
     "react": "18.2.0",
     "react-day-picker": "8.10.1",
     "react-dom": "18.2.0",
@@ -60,7 +61,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "zod": "^3.24.1"
-  },  "devDependencies": {
+  },
+  "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",

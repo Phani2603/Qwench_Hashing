@@ -7,10 +7,33 @@ require("dotenv").config()
 const app = express()
 
 // CORS Configuration for Production (Fix #3)
+const corsOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      process.env.CORS_ORIGIN, 
+      process.env.FRONTEND_URL,
+      'https://quench-rbac-frontend-7007f4nez-phani2603s-projects.vercel.app'
+    ].filter(Boolean) // Remove any undefined values
+  : ['http://localhost:3000', 'http://localhost:3001'];
+
+console.log('CORS Origins configured:', corsOrigins);
+console.log('Environment:', process.env.NODE_ENV);
+console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL]
-    : ['http://localhost:3000', 'http://localhost:3001'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    console.log('CORS request from origin:', origin);
+    
+    if (corsOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      console.log('CORS: Origin allowed');
+      callback(null, true);
+    } else {
+      console.log('CORS: Origin blocked');
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -41,6 +64,18 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+  })
+})
+
+// CORS Debug endpoint
+app.get("/api/cors-test", (req, res) => {
+  res.json({
+    success: true,
+    message: "CORS is working",
+    origin: req.headers.origin,
+    corsOrigins: corsOrigins,
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
   })
 })
 
