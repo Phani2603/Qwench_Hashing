@@ -596,14 +596,14 @@ router.get("/stats", authenticate, isAdmin, async (req, res) => {
       totalQRCodes,
       totalScans,
       categoryStats,
-    })
-  } catch (error) {
+    })  } catch (error) {
     console.error("Error fetching QR code stats:", error)
     res.status(500).json({
       success: false,
       message: "Failed to fetch QR code statistics",
       error: error.message,
-    })  }
+    })
+  }
 })
 
 // Verify QR code (public route) - used by frontend verification page
