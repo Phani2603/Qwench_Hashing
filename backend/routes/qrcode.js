@@ -72,30 +72,26 @@ router.get("/verify/:codeId", async (req, res) => {
     })  }
 })
 
-// Scan QR code and redirect to website (public route)
-router.get("/scan/:codeId", async (req, res) => {
+// Scan and verify QR code (public route) - used by frontend scan page for enhanced verification
+// This endpoint both verifies the QR code AND logs the scan, then returns data for the verification page
+router.post("/scan-verify/:codeId", async (req, res) => {
   try {
     const { codeId } = req.params
 
-    console.log(`QR Code scan attempt for: ${codeId}`) // Debug log
+    console.log(`QR Code scan-verify attempt for: ${codeId}`) // Debug log
 
     // Find the QR code
-    const qrCode = await QRCode.findOne({ codeId })
+    const qrCode = await QRCode.findOne({ codeId, isActive: true })
       .populate("assignedTo", "name email")
       .populate("category", "name color")
 
     if (!qrCode) {
-      console.log(`QR Code not found: ${codeId}`) // Debug log
-      return res.status(404).send(`
-        <html>
-          <head><title>QR Code Not Found</title></head>
-          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1>QR Code Not Found</h1>
-            <p>The QR code you scanned is invalid or has been deactivated.</p>
-            <p><small>Code ID: ${codeId}</small></p>
-          </body>
-        </html>
-      `)
+      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
+      return res.status(404).json({
+        success: false,
+        valid: false,
+        message: "QR code not found or has been deactivated",
+      })
     }
 
     // Get client information
@@ -110,7 +106,7 @@ router.get("/scan/:codeId", async (req, res) => {
       deviceType = "Tablet"
     }
 
-    console.log(`Logging scan for QR code: ${codeId}, redirecting to: ${qrCode.websiteURL}`) // Debug log
+    console.log(`Logging scan for QR code: ${codeId}`) // Debug log
 
     // Log the scan
     const scan = new Scan({
@@ -133,17 +129,112 @@ router.get("/scan/:codeId", async (req, res) => {
       lastScanned: new Date(),
     })
 
-    // Redirect to the actual website
-    res.redirect(302, qrCode.websiteURL)
+    console.log(`QR Code scan logged successfully: ${codeId}`) // Debug log
+
+    // Return the QR code data for the verification page
+    res.json({
+      success: true,
+      valid: true,
+      qrCode: {
+        codeId: qrCode.codeId,
+        websiteURL: qrCode.websiteURL,
+        websiteTitle: qrCode.websiteTitle,
+        assignedTo: {
+          name: qrCode.assignedTo.name,
+          email: qrCode.assignedTo.email,
+        },
+        category: {
+          name: qrCode.category.name,
+          color: qrCode.category.color,
+        },
+        scanCount: qrCode.scanCount + 1, // Include the updated scan count
+        createdAt: qrCode.createdAt,
+      },
+    })
+  } catch (error) {
+    console.error("Error processing scan-verify:", error)
+    res.status(500).json({
+      success: false,
+      valid: false,
+      message: "Error processing QR code scan",
+      error: error.message,
+    })
+  }
+})
+
+// Scan QR code and redirect to frontend verification page (public route)
+// This handles direct QR code scans and redirects to the enhanced verification experience
+router.get("/scan/:codeId", async (req, res) => {
+  try {
+    const { codeId } = req.params
+
+    console.log(`QR Code scan attempt for: ${codeId}`) // Debug log
+
+    // Find the QR code to verify it exists
+    const qrCode = await QRCode.findOne({ codeId, isActive: true })
+
+    if (!qrCode) {
+      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
+      return res.status(404).send(`
+        <html>
+          <head>
+            <title>QR Code Not Found</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; margin: 0; }
+              .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              .error-icon { font-size: 48px; color: #e74c3c; margin-bottom: 20px; }
+              h1 { color: #e74c3c; margin-bottom: 15px; }
+              p { color: #666; line-height: 1.5; }
+              .code-id { font-family: monospace; background: #f8f9fa; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-icon">❌</div>
+              <h1>QR Code Not Found</h1>
+              <p>The QR code you scanned is invalid or has been deactivated.</p>
+              <p><span class="code-id">Code ID: ${codeId}</span></p>
+              <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                If you believe this is an error, please contact support.
+              </p>
+            </div>
+          </body>
+        </html>
+      `)
+    }
+
+    // Get the frontend URL from environment variables
+    const frontendUrl = process.env.FRONTEND_URL || process.env.QR_BASE_URL || 'http://localhost:3000'
+    
+    console.log(`Redirecting to frontend scan page: ${frontendUrl}/scan/${codeId}`) // Debug log
+
+    // Redirect to the frontend scan page which will handle the enhanced verification
+    res.redirect(302, `${frontendUrl}/scan/${codeId}`)
   } catch (error) {
     console.error("Error processing QR scan:", error)
     res.status(500).send(`
       <html>
-        <head><title>Error</title></head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-          <h1>Error Processing QR Code</h1>
-          <p>There was an error processing your QR code scan. Please try again.</p>
-          <p><small>Error: ${error.message}</small></p>
+        <head>
+          <title>Error</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; margin: 0; }
+            .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .error-icon { font-size: 48px; color: #e74c3c; margin-bottom: 20px; }
+            h1 { color: #e74c3c; margin-bottom: 15px; }
+            p { color: #666; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error-icon">⚠️</div>
+            <h1>Error Processing QR Code</h1>
+            <p>There was an error processing your QR code scan. Please try again.</p>
+            <p style="font-size: 12px; color: #999; margin-top: 20px;">
+              Error: ${error.message}
+            </p>
+          </div>
         </body>
       </html>
     `)

@@ -11,7 +11,7 @@ const https = require('https');
 const http = require('http');
 
 // Production URLs
-const FRONTEND_URL = 'https://quench-rbac-frontend-7007f4nez-phani2603s-projects.vercel.app';
+const FRONTEND_URL = 'https://quench-rbac-frontend.vercel.app,https://quench-rbac-frontend-phani2603s-projects.vercel.app,https://quench-rbac-frontend-phani2603-phani2603s-projects.vercel.app';
 const BACKEND_URL = 'https://quench-rbac-backend-production.up.railway.app';
 
 // Admin credentials

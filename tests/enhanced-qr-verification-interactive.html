@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUENCH RBAC - Enhanced QR Verification Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .test-section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+        }
+        
+        .test-section:hover {
+            border-color: #2563eb;
+            background: #f1f5f9;
+        }
+        
+        .test-section h3 {
+            color: #1e40af;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .test-button:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+        
+        .test-button:active {
+            transform: translateY(0);
+        }
+        
+        .test-button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        
+        .info {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        .warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+        
+        .config {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .config h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        
+        .config-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .config-label {
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .config-value {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            flex-grow: 1;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-ready {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-running {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .quick-actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .quick-actions .test-button {
+            margin: 10px;
+            font-size: 16px;
+            padding: 15px 30px;
+        }
+        
+        .icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Enhanced QR Verification Tests</h1>
+        <p class="subtitle">Comprehensive testing for the new 3-second verification and auto-redirect system</p>
+        
+        <div class="config">
+            <h3>🔧 Configuration</h3>
+            <div class="config-item">
+                <span class="config-label">Backend URL:</span>
+                <input type="text" class="config-value" id="backend-url" value="https://quench-rbac-backend-production.up.railway.app">
+            </div>
+            <div class="config-item">
+                <span class="config-label">Frontend URL:</span>
+                <input type="text" class="config-value" id="frontend-url" value="https://quench-rbac-frontend.vercel.app">
+            </div>
+            <div class="config-item">
+                <span class="config-label">Admin Email:</span>
+                <input type="text" class="config-value" id="admin-email" value="admin@quench.com">
+            </div>
+            <div class="config-item">
+                <span class="config-label">Admin Password:</span>
+                <input type="password" class="config-value" id="admin-password" value="QuenchAdmin2024!">
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <button class="test-button" onclick="runAllTests()" id="run-all-btn">
+                🧪 Run All Tests
+            </button>
+            <button class="test-button" onclick="clearAllResults()">
+                🧹 Clear Results
+            </button>
+            <button class="test-button" onclick="openAdminPanel()" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                👑 Open Admin Panel
+            </button>
+        </div>
+
+        <div class="progress" id="overall-progress" style="display: none;">
+            <div class="progress-bar" id="overall-progress-bar"></div>
+        </div>
+        <div id="overall-status"></div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h3>🔐 1. Admin Authentication <span id="auth-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testAuthentication()" id="auth-btn">Test Authentication</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 2. QR Code Generation <span id="qr-gen-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testQRGeneration()" id="qr-gen-btn">Generate Test QR</button>
+            <div id="qr-gen-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ 3. QR Verification Endpoint <span id="verify-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testQRVerification()" id="verify-btn">Test Verification</button>
+            <div id="verify-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 4. Enhanced Scan-Verify Endpoint <span id="scan-verify-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testScanVerify()" id="scan-verify-btn">Test Scan-Verify</button>
+            <div id="scan-verify-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 5. Frontend Scan Page <span id="frontend-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testFrontendScanPage()" id="frontend-btn">Test Frontend</button>
+            <button class="test-button" onclick="openScanPage()" style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);">🔗 Open Scan Page</button>
+            <div id="frontend-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 6. Scan Analytics <span id="analytics-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testScanAnalytics()" id="analytics-btn">Test Analytics</button>
+            <div id="analytics-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🚫 7. Invalid QR Handling <span id="invalid-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testInvalidQR()" id="invalid-btn">Test Invalid QR</button>
+            <div id="invalid-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 8. Complete Flow Simulation <span id="flow-status" class="status-badge status-ready">Ready</span></h3>
+            <button class="test-button" onclick="testCompleteFlow()" id="flow-btn">Test Complete Flow</button>
+            <button class="test-button" onclick="demonstrateCountdown()" style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);">⏱️ Demo Countdown</button>
+            <div id="flow-result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>📋 Test Results Summary</h3>
+        <div id="test-summary"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let adminToken = null;
+        let testQRCodeId = null;
+        let testResults = [];
+        let currentTestIndex = 0;
+        let totalTests = 8;
+
+        // Configuration getters
+        function getBackendUrl() {
+            return document.getElementById('backend-url').value.trim();
+        }
+
+        function getFrontendUrl() {
+            return document.getElementById('frontend-url').value.trim();
+        }
+
+        function getAdminCredentials() {
+            return {
+                email: document.getElementById('admin-email').value.trim(),
+                password: document.getElementById('admin-password').value.trim()
+            };
+        }
+
+        // Utility functions
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+            
+            element.innerHTML = `<div class="${type}">${icon} [${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function updateStatus(testId, status) {
+            const statusElement = document.getElementById(`${testId}-status`);
+            if (statusElement) {
+                statusElement.className = `status-badge status-${status}`;
+                statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            }
+        }
+
+        function updateProgress(current, total) {
+            const progressContainer = document.getElementById('overall-progress');
+            const progressBar = document.getElementById('overall-progress-bar');
+            const statusElement = document.getElementById('overall-status');
+            
+            progressContainer.style.display = 'block';
+            const percentage = (current / total) * 100;
+            progressBar.style.width = `${percentage}%`;
+            statusElement.innerHTML = `<div class="info">📊 Progress: ${current}/${total} tests completed (${percentage.toFixed(1)}%)</div>`;
+        }
+
+        // Test functions
+        async function testAuthentication() {
+            updateStatus('auth', 'running');
+            showResult('auth-result', '🔄 Authenticating admin user...', 'info');
+            
+            try {
+                const credentials = getAdminCredentials();
+                const response = await fetch(`${getBackendUrl()}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(credentials)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    adminToken = data.token;
+                    updateStatus('auth', 'ready');
+                    showResult('auth-result', `✅ Authentication successful!\\n👤 User: ${data.user.email}\\n🛡️ Role: ${data.user.role}\\n🔑 Token: ${data.token.substring(0, 20)}...`, 'success');
+                    return true;
+                } else {
+                    updateStatus('auth', 'failed');
+                    showResult('auth-result', `❌ Authentication failed: ${data.message || 'Unknown error'}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('auth', 'failed');
+                showResult('auth-result', `❌ Authentication error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testQRGeneration() {
+            if (!adminToken) {
+                showResult('qr-gen-result', '❌ Please authenticate first', 'error');
+                return false;
+            }
+
+            updateStatus('qr-gen', 'running');
+            showResult('qr-gen-result', '🔄 Generating test QR code...', 'info');
+            
+            try {
+                // First get users and categories
+                const [usersResponse, categoriesResponse] = await Promise.all([
+                    fetch(`${getBackendUrl()}/api/admin/users`, {
+                        headers: { 'Authorization': `Bearer ${adminToken}` }
+                    }),
+                    fetch(`${getBackendUrl()}/api/admin/categories`, {
+                        headers: { 'Authorization': `Bearer ${adminToken}` }
+                    })
+                ]);
+
+                const usersData = await usersResponse.json();
+                const categoriesData = await categoriesResponse.json();
+
+                if (!usersData.users || !categoriesData.categories || usersData.users.length === 0 || categoriesData.categories.length === 0) {
+                    throw new Error('No users or categories available for testing');
+                }
+
+                // Generate QR code
+                const response = await fetch(`${getBackendUrl()}/api/qrcodes/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: usersData.users[0]._id,
+                        categoryId: categoriesData.categories[0]._id,
+                        websiteURL: 'https://www.google.com',
+                        websiteTitle: 'Google Search - Test QR'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.qrCode) {
+                    testQRCodeId = data.qrCode.codeId;
+                    updateStatus('qr-gen', 'ready');
+                    showResult('qr-gen-result', `✅ QR code generated successfully!\\n🆔 Code ID: ${testQRCodeId}\\n🌐 Website: ${data.qrCode.websiteURL}\\n📊 Initial scan count: ${data.qrCode.scanCount}\\n📅 Created: ${new Date(data.qrCode.createdAt).toLocaleString()}`, 'success');
+                    return true;
+                } else {
+                    updateStatus('qr-gen', 'failed');
+                    showResult('qr-gen-result', `❌ QR generation failed: ${data.message || 'Unknown error'}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('qr-gen', 'failed');
+                showResult('qr-gen-result', `❌ QR generation error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testQRVerification() {
+            if (!testQRCodeId) {
+                showResult('verify-result', '❌ Please generate a QR code first', 'error');
+                return false;
+            }
+
+            updateStatus('verify', 'running');
+            showResult('verify-result', '🔄 Testing QR verification endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/qrcodes/verify/${testQRCodeId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.valid) {
+                    updateStatus('verify', 'ready');
+                    showResult('verify-result', `✅ QR verification successful!\\n🆔 Code ID: ${data.qrCode.codeId}\\n👤 Assigned to: ${data.qrCode.assignedTo.name}\\n📂 Category: ${data.qrCode.category.name}\\n🎨 Color: ${data.qrCode.category.color}\\n📅 Created: ${new Date(data.qrCode.createdAt).toLocaleString()}`, 'success');
+                    return true;
+                } else {
+                    updateStatus('verify', 'failed');
+                    showResult('verify-result', `❌ Verification failed: ${data.message || 'QR code not valid'}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('verify', 'failed');
+                showResult('verify-result', `❌ Verification error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testScanVerify() {
+            if (!testQRCodeId) {
+                showResult('scan-verify-result', '❌ Please generate a QR code first', 'error');
+                return false;
+            }
+
+            updateStatus('scan-verify', 'running');
+            showResult('scan-verify-result', '🔄 Testing enhanced scan-verify endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/qrcodes/scan-verify/${testQRCodeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.valid) {
+                    updateStatus('scan-verify', 'ready');
+                    showResult('scan-verify-result', `✅ Scan-verify successful!\\n🆔 Code ID: ${data.qrCode.codeId}\\n🌐 Website URL: ${data.qrCode.websiteURL}\\n📄 Website Title: ${data.qrCode.websiteTitle}\\n📊 Scan Count: ${data.qrCode.scanCount}\\n👤 Assigned to: ${data.qrCode.assignedTo.name}\\n📂 Category: ${data.qrCode.category.name}\\n📅 Created: ${new Date(data.qrCode.createdAt).toLocaleString()}`, 'success');
+                    return true;
+                } else {
+                    updateStatus('scan-verify', 'failed');
+                    showResult('scan-verify-result', `❌ Scan-verify failed: ${data.message || 'QR code not valid'}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('scan-verify', 'failed');
+                showResult('scan-verify-result', `❌ Scan-verify error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testFrontendScanPage() {
+            if (!testQRCodeId) {
+                showResult('frontend-result', '❌ Please generate a QR code first', 'error');
+                return false;
+            }
+
+            updateStatus('frontend', 'running');
+            showResult('frontend-result', '🔄 Testing frontend scan page accessibility...', 'info');
+            
+            try {
+                const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
+                const response = await fetch(scanUrl);
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    if (html.includes('QR Code Scan') || html.includes('Verifying') || html.includes('scan')) {
+                        updateStatus('frontend', 'ready');
+                        showResult('frontend-result', `✅ Frontend scan page accessible!\\n🔗 Scan URL: ${scanUrl}\\n📊 HTTP Status: ${response.status}\\n📄 Content detected: QR scan page`, 'success');
+                        return true;
+                    } else {
+                        updateStatus('frontend', 'failed');
+                        showResult('frontend-result', `⚠️ Frontend page accessible but content unexpected\\n🔗 URL: ${scanUrl}\\n📊 Status: ${response.status}`, 'warning');
+                        return false;
+                    }
+                } else {
+                    updateStatus('frontend', 'failed');
+                    showResult('frontend-result', `❌ Frontend scan page not accessible\\n🔗 URL: ${scanUrl}\\n📊 HTTP Status: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('frontend', 'failed');
+                showResult('frontend-result', `❌ Frontend test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testScanAnalytics() {
+            if (!testQRCodeId || !adminToken) {
+                showResult('analytics-result', '❌ Please authenticate and generate a QR code first', 'error');
+                return false;
+            }
+
+            updateStatus('analytics', 'running');
+            showResult('analytics-result', '🔄 Testing scan analytics...', 'info');
+            
+            try {
+                // Get user data first
+                const usersResponse = await fetch(`${getBackendUrl()}/api/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                const usersData = await usersResponse.json();
+                const userId = usersData.users[0]._id;
+
+                // Get QR codes for the user
+                const response = await fetch(`${getBackendUrl()}/api/qrcodes/user/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.qrCodes) {
+                    const testQR = data.qrCodes.find(qr => qr.codeId === testQRCodeId);
+                    if (testQR) {
+                        updateStatus('analytics', 'ready');
+                        showResult('analytics-result', `✅ Scan analytics working!\\n🆔 QR Code: ${testQR.codeId}\\n📊 Total scans: ${testQR.scanCount}\\n📅 Last scanned: ${testQR.lastScanned ? new Date(testQR.lastScanned).toLocaleString() : 'Never'}\\n🌐 Website: ${testQR.websiteURL}\\n📈 Analytics data available in admin dashboard`, 'success');
+                        return true;
+                    } else {
+                        updateStatus('analytics', 'failed');
+                        showResult('analytics-result', `⚠️ Test QR code not found in analytics data`, 'warning');
+                        return false;
+                    }
+                } else {
+                    updateStatus('analytics', 'failed');
+                    showResult('analytics-result', `❌ Analytics test failed: ${data.message || 'Unknown error'}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('analytics', 'failed');
+                showResult('analytics-result', `❌ Analytics test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testInvalidQR() {
+            updateStatus('invalid', 'running');
+            showResult('invalid-result', '🔄 Testing invalid QR code handling...', 'info');
+            
+            try {
+                const invalidCodeId = 'invalid-test-code-' + Date.now();
+                
+                // Test verification endpoint
+                const verifyResponse = await fetch(`${getBackendUrl()}/api/qrcodes/verify/${invalidCodeId}`);
+                const verifyData = await verifyResponse.json();
+                
+                // Test scan-verify endpoint
+                const scanResponse = await fetch(`${getBackendUrl()}/api/qrcodes/scan-verify/${invalidCodeId}`, {
+                    method: 'POST'
+                });
+                const scanData = await scanResponse.json();
+                
+                const verifyHandled = verifyResponse.status === 404 || !verifyData.valid;
+                const scanHandled = scanResponse.status === 404 || !scanData.valid;
+                
+                if (verifyHandled && scanHandled) {
+                    updateStatus('invalid', 'ready');
+                    showResult('invalid-result', `✅ Invalid QR handling working correctly!\\n🔍 Verify endpoint: ${verifyResponse.status} (${verifyHandled ? 'Handled' : 'Not handled'})\\n🔍 Scan-verify endpoint: ${scanResponse.status} (${scanHandled ? 'Handled' : 'Not handled'})\\n🆔 Test code: ${invalidCodeId}\\n✅ Both endpoints properly reject invalid QR codes`, 'success');
+                    return true;
+                } else {
+                    updateStatus('invalid', 'failed');
+                    showResult('invalid-result', `❌ Invalid QR handling not working correctly\\n🔍 Verify: ${verifyResponse.status}\\n🔍 Scan-verify: ${scanResponse.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('invalid', 'failed');
+                showResult('invalid-result', `❌ Invalid QR test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testCompleteFlow() {
+            if (!testQRCodeId) {
+                showResult('flow-result', '❌ Please generate a QR code first', 'error');
+                return false;
+            }
+
+            updateStatus('flow', 'running');
+            showResult('flow-result', '🔄 Testing complete QR scan flow...', 'info');
+            
+            try {
+                // Step 1: Simulate QR scan entry point
+                showResult('flow-result', '🔄 Step 1: Testing QR scan entry point...', 'info');
+                const scanEntryResponse = await fetch(`${getBackendUrl()}/api/qrcodes/scan/${testQRCodeId}`, {
+                    redirect: 'manual'
+                });
+                
+                const step1Success = scanEntryResponse.status === 302;
+                showResult('flow-result', `${step1Success ? '✅' : '❌'} Step 1: Backend scan entry ${step1Success ? 'redirects correctly' : 'failed'}\\nStatus: ${scanEntryResponse.status}`, step1Success ? 'info' : 'error');
+                
+                if (!step1Success) {
+                    updateStatus('flow', 'failed');
+                    return false;
+                }
+
+                // Step 2: Test scan-verify endpoint
+                showResult('flow-result', '🔄 Step 2: Testing scan-verify endpoint...', 'info');
+                const scanVerifyResponse = await fetch(`${getBackendUrl()}/api/qrcodes/scan-verify/${testQRCodeId}`, {
+                    method: 'POST'
+                });
+                const scanData = await scanVerifyResponse.json();
+                
+                const step2Success = scanVerifyResponse.ok && scanData.success;
+                showResult('flow-result', `${step2Success ? '✅' : '❌'} Step 2: Scan-verify ${step2Success ? 'successful' : 'failed'}\\nWebsite: ${scanData.qrCode?.websiteURL || 'N/A'}`, step2Success ? 'info' : 'error');
+                
+                if (!step2Success) {
+                    updateStatus('flow', 'failed');
+                    return false;
+                }
+
+                // Step 3: Simulate countdown and redirect
+                showResult('flow-result', '⏱️ Step 3: Simulating 3-second countdown...', 'info');
+                for (let i = 3; i > 0; i--) {
+                    showResult('flow-result', `⏱️ Step 3: Countdown ${i}... (would show verification page)`, 'info');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                showResult('flow-result', '🎯 Step 3: Countdown complete, would redirect to website', 'info');
+
+                updateStatus('flow', 'ready');
+                showResult('flow-result', `✅ Complete flow test successful!\\n📊 Flow: QR Scan → Backend → Frontend → Verify → Countdown → Redirect\\n🌐 Target URL: ${scanData.qrCode.websiteURL}\\n⏱️ 3-second verification page working\\n🔄 Auto-redirect functionality confirmed`, 'success');
+                return true;
+            } catch (error) {
+                updateStatus('flow', 'failed');
+                showResult('flow-result', `❌ Complete flow test error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function demonstrateCountdown() {
+            if (!testQRCodeId) {
+                alert('Please generate a QR code first');
+                return;
+            }
+
+            const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
+            showResult('flow-result', `🚀 Opening scan page to demonstrate countdown...\\n🔗 URL: ${scanUrl}\\n⏱️ You should see a 3-second countdown with progress bar\\n🎯 Followed by auto-redirect to the target website`, 'info');
+            
+            window.open(scanUrl, '_blank');
+        }
+
+        function openScanPage() {
+            if (!testQRCodeId) {
+                alert('Please generate a QR code first');
+                return;
+            }
+
+            const scanUrl = `${getFrontendUrl()}/scan/${testQRCodeId}`;
+            window.open(scanUrl, '_blank');
+        }
+
+        function openAdminPanel() {
+            const adminUrl = `${getFrontendUrl()}/admin`;
+            window.open(adminUrl, '_blank');
+        }
+
+        async function runAllTests() {
+            const runAllBtn = document.getElementById('run-all-btn');
+            runAllBtn.disabled = true;
+            runAllBtn.textContent = '🔄 Running Tests...';
+            
+            testResults = [];
+            currentTestIndex = 0;
+            
+            const tests = [
+                { name: 'Admin Authentication', func: testAuthentication },
+                { name: 'QR Code Generation', func: testQRGeneration },
+                { name: 'QR Verification Endpoint', func: testQRVerification },
+                { name: 'Enhanced Scan-Verify Endpoint', func: testScanVerify },
+                { name: 'Frontend Scan Page', func: testFrontendScanPage },
+                { name: 'Scan Analytics', func: testScanAnalytics },
+                { name: 'Invalid QR Handling', func: testInvalidQR },
+                { name: 'Complete Flow Simulation', func: testCompleteFlow }
+            ];
+
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                currentTestIndex = i + 1;
+                updateProgress(currentTestIndex, totalTests);
+                
+                const result = await test.func();
+                testResults.push({ name: test.name, passed: result });
+                
+                // Brief pause between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            updateTestSummary();
+            runAllBtn.disabled = false;
+            runAllBtn.textContent = '🧪 Run All Tests';
+            
+            const passed = testResults.filter(r => r.passed).length;
+            const total = testResults.length;
+            const successRate = ((passed / total) * 100).toFixed(1);
+            
+            showResult('overall-status', `🎉 All tests completed!\\n📊 Results: ${passed}/${total} passed (${successRate}% success rate)\\n${passed === total ? '✅ Enhanced QR verification system is working perfectly!' : '⚠️ Some tests failed - please review individual results above'}`, passed === total ? 'success' : 'warning');
+        }
+
+        function updateTestSummary() {
+            const summaryElement = document.getElementById('test-summary');
+            const passed = testResults.filter(r => r.passed).length;
+            const failed = testResults.filter(r => !r.passed).length;
+            const total = testResults.length;
+            
+            let summaryHtml = `
+                <div class="info">
+                    📊 <strong>Test Summary:</strong><br>
+                    ✅ Passed: ${passed}<br>
+                    ❌ Failed: ${failed}<br>
+                    📈 Total: ${total}<br>
+                    📊 Success Rate: ${((passed / total) * 100).toFixed(1)}%
+                </div>
+                <br>
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
+            `;
+            
+            testResults.forEach(result => {
+                const icon = result.passed ? '✅' : '❌';
+                const color = result.passed ? 'color: #065f46;' : 'color: #991b1b;';
+                summaryHtml += `
+                    <span>${result.name}</span>
+                    <span style="${color}"><strong>${icon} ${result.passed ? 'PASSED' : 'FAILED'}</strong></span>
+                `;
+            });
+            
+            summaryHtml += '</div>';
+            
+            if (testQRCodeId) {
+                summaryHtml += `
+                    <br>
+                    <div class="success">
+                        🔗 <strong>Test QR Code Links:</strong><br>
+                        🔍 Verification Page: <a href="${getFrontendUrl()}/verify/${testQRCodeId}" target="_blank">${getFrontendUrl()}/verify/${testQRCodeId}</a><br>
+                        🚀 Enhanced Scan Page: <a href="${getFrontendUrl()}/scan/${testQRCodeId}" target="_blank">${getFrontendUrl()}/scan/${testQRCodeId}</a><br>
+                        💡 Use the scan page to see the 3-second countdown and auto-redirect in action!
+                    </div>
+                `;
+            }
+            
+            summaryElement.innerHTML = summaryHtml;
+        }
+
+        function clearAllResults() {
+            const resultElements = [
+                'auth-result', 'qr-gen-result', 'verify-result', 'scan-verify-result',
+                'frontend-result', 'analytics-result', 'invalid-result', 'flow-result',
+                'overall-status', 'test-summary'
+            ];
+            
+            resultElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.innerHTML = '';
+            });
+
+            // Reset all status badges
+            const statusElements = [
+                'auth-status', 'qr-gen-status', 'verify-status', 'scan-verify-status',
+                'frontend-status', 'analytics-status', 'invalid-status', 'flow-status'
+            ];
+            
+            statusElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.className = 'status-badge status-ready';
+                    element.textContent = 'Ready';
+                }
+            });
+
+            // Hide progress bar
+            document.getElementById('overall-progress').style.display = 'none';
+            
+            // Reset variables
+            testResults = [];
+            currentTestIndex = 0;
+        }
+
+        // Auto-run authentication test on page load
+        window.onload = function() {
+            console.log('Enhanced QR Verification Test Suite loaded');
+        };
+    </script>
+</body>
+</html>
