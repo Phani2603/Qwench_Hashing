@@ -64,10 +64,11 @@ app.get("/api/health", (req, res) => {
 app.get("/api/debug", (req, res) => {
   res.json({
     success: true,
-    message: "Debug endpoint working - Before route loading",
+    message: "Debug endpoint working - After syntax fix and route reordering",
     timestamp: new Date().toISOString(),
-    deploymentVersion: "v3.0-reorder-test",
-    server: "Railway deployment successful"
+    deploymentVersion: "v5.0-full-route-fix",
+    server: "Railway deployment with full routes enabled",
+    routesActive: "ALL ROUTES ENABLED"
   })
 })
 
@@ -83,11 +84,10 @@ app.get("/api/cors-test", (req, res) => {
   })
 })
 
-// Routes - with error handling (MINIMAL TEST)
+// Routes - with error handling
 console.log("Loading routes...")
-console.log("✅ Routes section reached - No auth routes loaded for testing")
 
-/* TEMPORARILY DISABLED FOR DEBUGGING
+// Auth routes
 try {
   app.use("/api/auth", require("./routes/auth"))
   console.log("✅ Auth routes loaded")
@@ -95,7 +95,7 @@ try {
   console.error("❌ Error loading auth routes:", error.message)
 }
 
-/* TEMPORARILY DISABLED FOR DEBUGGING
+// User routes
 try {
   app.use("/api/user", require("./routes/user"))
   console.log("✅ User routes loaded")
@@ -103,6 +103,7 @@ try {
   console.error("❌ Error loading user routes:", error.message)
 }
 
+// Admin routes
 try {
   app.use("/api/admin", require("./routes/admin"))
   console.log("✅ Admin routes loaded")
@@ -110,6 +111,7 @@ try {
   console.error("❌ Error loading admin routes:", error.message)
 }
 
+// QR code routes
 try {
   app.use("/api/qrcodes", require("./routes/qrcode"))
   console.log("✅ QR code routes loaded")
@@ -117,6 +119,7 @@ try {
   console.error("❌ Error loading QR code routes:", error.message)
 }
 
+// Category routes
 try {
   app.use("/api/categories", require("./routes/category"))
   console.log("✅ Category routes loaded")
@@ -124,6 +127,7 @@ try {
   console.error("❌ Error loading category routes:", error.message)
 }
 
+// Scan routes
 try {
   app.use("/api/scans", require("./routes/scan"))
   console.log("✅ Scan routes loaded")
@@ -131,13 +135,13 @@ try {
   console.error("❌ Error loading scan routes:", error.message)
 }
 
+// Admin analytics routes
 try {
   app.use("/api/admin/analytics", require("./routes/admin-analytics"))
   console.log("✅ Admin analytics routes loaded")
 } catch (error) {
   console.error("❌ Error loading admin analytics routes:", error.message)
 }
-*/
 
 // Error handling middleware
 app.use((err, req, res, next) => {
