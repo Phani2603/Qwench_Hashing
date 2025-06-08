@@ -69,6 +69,24 @@ app.get("/api/health", (req, res) => {
   })
 })
 
+// Debug endpoint to test deployment
+app.get("/api/debug", (req, res) => {
+  res.json({
+    success: true,
+    message: "Debug endpoint working - Routes should be loading",
+    timestamp: new Date().toISOString(),
+    deploymentVersion: "v2.0-route-fix",
+    routesRegistered: [
+      "/api/auth",
+      "/api/user", 
+      "/api/admin",
+      "/api/qrcodes",
+      "/api/categories",
+      "/api/scans"
+    ]
+  })
+})
+
 // CORS Debug endpoint
 app.get("/api/cors-test", (req, res) => {
   res.json({
