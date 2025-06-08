@@ -11,9 +11,9 @@ const corsOrigins = process.env.NODE_ENV === 'production'
   ? [
       process.env.CORS_ORIGIN, 
       process.env.FRONTEND_URL,
-      'https://quench-rbac-frontend-phani2603s-projects.vercel.app/',
-      'https://quench-rbac-frontend.vercel.app/',
-      'https://quench-rbac-frontend-phani2603-phani2603s-projects.vercel.app/'
+      'https://quench-rbac-frontend-phani2603s-projects.vercel.app',
+      'https://quench-rbac-frontend.vercel.app',
+      'https://quench-rbac-frontend-phani2603-phani2603s-projects.vercel.app'
     ].filter(Boolean) // Remove any undefined values
   : ['http://localhost:3000', 'http://localhost:3001'];
 
