@@ -1,6 +1,11 @@
 const express = require("express")
 const User = require("../models/User")
 const { authenticate } = require("../middleware/auth")
+const { 
+  validateUserUpdate, 
+  validatePasswordChange, 
+  validateWebsiteUrl 
+} = require("../middleware/validation")
 
 const router = express.Router()
 
@@ -28,6 +33,7 @@ router.get("/profile", authenticate, async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         lastLogin: lastLogin,
+        websiteURLs: user.websiteURLs || [],
       },
     })
   } catch (error) {
@@ -38,8 +44,8 @@ router.get("/profile", authenticate, async (req, res) => {
   }
 })
 
-// Update user profile
-router.put("/profile", authenticate, async (req, res) => {
+// Update user profile (Fix #5: Input Validation)
+router.put("/profile", authenticate, validateUserUpdate, async (req, res) => {
   try {
     const { name, email } = req.body
     const userId = req.user._id
@@ -57,6 +63,24 @@ router.put("/profile", authenticate, async (req, res) => {
 
     // Update user
     const updatedUser = await User.findByIdAndUpdate(userId, { name, email }, { new: true, runValidators: true })
+
+    // Create an audit log for profile update
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,
+      action: "Profile Update",
+      resource: "User",
+      resourceId: userId.toString(),
+      details: {
+        updatedFields: {
+          name: name,
+          email: email
+        },
+        previousEmail: req.user.email
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -76,8 +100,8 @@ router.put("/profile", authenticate, async (req, res) => {
   }
 })
 
-// Change password
-router.put("/change-password", authenticate, async (req, res) => {
+// Change password (Fix #5: Input Validation)
+router.put("/change-password", authenticate, validatePasswordChange, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body
     const userId = req.user._id
@@ -103,6 +127,20 @@ router.put("/change-password", authenticate, async (req, res) => {
     // Update password
     user.password = newPassword
     await user.save()
+
+    // Create an audit log for password change
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: user.email,
+      action: "Password Change",
+      resource: "User",
+      resourceId: userId.toString(),
+      details: {
+        passwordChanged: true
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -160,11 +198,26 @@ router.get("/website-urls", authenticate, async (req, res) => {
   }
 })
 
-// Add/Update website URL
-router.post("/website-urls", authenticate, async (req, res) => {
+// Add/Update website URL (Fix #5: Input Validation)
+router.post("/website-urls", authenticate, validateWebsiteUrl, async (req, res) => {
   try {
     const { url, title, description } = req.body
     const userId = req.user._id
+
+    // Validate required fields
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        message: "URL is required",
+      });
+    }
+    
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+      });
+    }
 
     // Validate URL format
     try {
@@ -172,7 +225,7 @@ router.post("/website-urls", authenticate, async (req, res) => {
     } catch (e) {
       return res.status(400).json({
         success: false,
-        message: "Invalid URL format",
+        message: "Invalid URL format. Please include http:// or https://",
       })
     }
 
@@ -209,6 +262,22 @@ router.post("/website-urls", authenticate, async (req, res) => {
     })
 
     await user.save()
+
+    // Create an audit log for adding a website URL
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: user.email,
+      action: "Website URL Added",
+      resource: "User",
+      resourceId: userId.toString(),
+      details: {
+        url: url,
+        title: title,
+        description: description || ""
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -258,6 +327,14 @@ router.put("/website-urls/:urlId", authenticate, async (req, res) => {
       })
     }
 
+    // Store old values for audit log
+    const oldValues = {
+      url: websiteURL.url,
+      title: websiteURL.title,
+      description: websiteURL.description,
+      isActive: websiteURL.isActive
+    };
+
     // Update fields
     if (url) websiteURL.url = url
     if (title) websiteURL.title = title
@@ -265,6 +342,27 @@ router.put("/website-urls/:urlId", authenticate, async (req, res) => {
     if (isActive !== undefined) websiteURL.isActive = isActive
 
     await user.save()
+
+    // Create an audit log for updating a website URL
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: user.email,
+      action: "Website URL Updated",
+      resource: "User",
+      resourceId: userId.toString(),
+      details: {
+        urlId: urlId,
+        oldValues: oldValues,
+        newValues: {
+          url: websiteURL.url,
+          title: websiteURL.title,
+          description: websiteURL.description,
+          isActive: websiteURL.isActive
+        }
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -301,8 +399,31 @@ router.delete("/website-urls/:urlId", authenticate, async (req, res) => {
       })
     }
 
+    // Store the website URL data for audit logging before deletion
+    const deletedWebsiteURL = {
+      url: websiteURL.url,
+      title: websiteURL.title,
+      description: websiteURL.description,
+      isActive: websiteURL.isActive
+    };
+
     user.websiteURLs.pull(urlId)
     await user.save()
+
+    // Create an audit log for deleting a website URL
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: user.email,
+      action: "Website URL Deleted",
+      resource: "User",
+      resourceId: userId.toString(),
+      details: {
+        urlId: urlId,
+        deletedWebsiteURL: deletedWebsiteURL
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,

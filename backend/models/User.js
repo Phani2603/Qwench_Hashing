@@ -1,6 +1,35 @@
 const mongoose = require("mongoose")
 const bcrypt = require("bcryptjs")
 
+const websiteURLSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: [true, "URL is required"],
+      trim: true,
+    },
+    title: {
+      type: String,
+      required: [true, "Title is required"],
+      trim: true,
+      maxlength: [100, "Title cannot exceed 100 characters"],
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: [500, "Description cannot exceed 500 characters"],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -21,54 +50,58 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
-      select: false, // Don't include password in queries by default
     },
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
     },
-    websiteURLs: [
-      {
-        url: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        title: {
-          type: String,
-          required: true,
-          trim: true,
-          maxlength: [50, "Title cannot exceed 50 characters"],
-        },
-        description: {
-          type: String,
-          trim: true,
-          maxlength: [200, "Description cannot exceed 200 characters"],
-        },
-        isActive: {
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    profileImage: {
+      type: String,
+      default: null,
+    },
+    phoneNumber: {
+      type: String,
+      default: null,
+    },
+    websiteURLs: [websiteURLSchema],
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      zipCode: String,
+      country: String,
+    },
+    preferences: {
+      theme: {
+        type: String,
+        enum: ["light", "dark", "system"],
+        default: "system",
+      },
+      notifications: {
+        email: {
           type: Boolean,
           default: true,
         },
-        createdAt: {
-          type: Date,
-          default: Date.now,
+        push: {
+          type: Boolean,
+          default: true,
         },
       },
-    ],
+    },
   },
   {
     timestamps: true,
   },
 )
-
-// Validate maximum 2 website URLs
-userSchema.pre("save", function (next) {
-  if (this.websiteURLs && this.websiteURLs.length > 2) {
-    return next(new Error("Maximum 2 website URLs allowed per user"))
-  }
-  next()
-})
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
@@ -85,7 +118,7 @@ userSchema.pre("save", async function (next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password)
+  return bcrypt.compare(candidatePassword, this.password)
 }
 
 // Remove password from JSON output

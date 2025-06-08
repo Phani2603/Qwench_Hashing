@@ -1,6 +1,7 @@
 const express = require("express")
 const User = require("../models/User")
 const { authenticate, isAdmin } = require("../middleware/auth")
+const { validateRoleUpdate } = require("../middleware/validation")
 
 const router = express.Router()
 
@@ -73,8 +74,8 @@ router.get("/users/:userId", authenticate, isAdmin, async (req, res) => {
   }
 })
 
-// Update user role (admin only)
-router.put("/users/:userId/role", authenticate, isAdmin, async (req, res) => {
+// Update user role (admin only) (Fix #5: Input Validation)
+router.put("/users/:userId/role", authenticate, isAdmin, validateRoleUpdate, async (req, res) => {
   try {
     const { userId } = req.params
     const { role } = req.body
@@ -95,6 +96,10 @@ router.put("/users/:userId/role", authenticate, isAdmin, async (req, res) => {
       })
     }
 
+    // Get the user before update to log the previous role
+    const user = await User.findById(userId);
+    const previousRole = user ? user.role : 'unknown';
+
     // Update user role
     const updatedUser = await User.findByIdAndUpdate(userId, { role }, { new: true, runValidators: true })
 
@@ -104,6 +109,22 @@ router.put("/users/:userId/role", authenticate, isAdmin, async (req, res) => {
         message: "User not found",
       })
     }
+
+    // Create an audit log for role update
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,  // Admin who made the change
+      action: "User Role Update",
+      resource: "User",
+      resourceId: userId,
+      details: {
+        targetUser: updatedUser.email,
+        previousRole: previousRole,
+        newRole: role
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -145,6 +166,22 @@ router.delete("/users/:userId", authenticate, isAdmin, async (req, res) => {
         message: "User not found",
       })
     }
+
+    // Create an audit log for user deletion
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,  // Admin who made the change
+      action: "User Deletion",
+      resource: "User",
+      resourceId: userId,
+      details: {
+        deletedUserEmail: deletedUser.email,
+        deletedUserName: deletedUser.name,
+        deletedUserRole: deletedUser.role
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,

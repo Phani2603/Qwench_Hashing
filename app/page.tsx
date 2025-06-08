@@ -131,7 +131,7 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500 mb-2">Need to set up the initial admin account?</p>
                 <Link href="/initial-admin-setup" className="block">
                   <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
-                    Initial Admin Setup
+                    ...
                   </Button>
                 </Link>
               </div>

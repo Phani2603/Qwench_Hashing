@@ -52,9 +52,24 @@ router.post("/", authenticate, isAdmin, async (req, res) => {
       color: color || "#3B82F6",
       createdBy: req.user._id,
     })
-
     await category.save()
     await category.populate("createdBy", "name")
+
+    // Create an audit log for category creation
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,
+      action: "Category Creation",
+      resource: "Category",
+      resourceId: category._id.toString(),
+      details: {
+        name: name,
+        description: description,
+        color: color || "#3B82F6"
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.status(201).json({
       success: true,
@@ -71,9 +86,17 @@ router.post("/", authenticate, isAdmin, async (req, res) => {
 
 // Update category (admin only)
 router.put("/:categoryId", authenticate, isAdmin, async (req, res) => {
-  try {
-    const { categoryId } = req.params
+  try {    const { categoryId } = req.params
     const { name, description, color, isActive } = req.body
+    
+    // Find the category before update for logging the changes
+    const originalCategory = await Category.findById(categoryId);
+    if (!originalCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      })
+    }
 
     const category = await Category.findByIdAndUpdate(
       categoryId,
@@ -81,12 +104,30 @@ router.put("/:categoryId", authenticate, isAdmin, async (req, res) => {
       { new: true, runValidators: true },
     ).populate("createdBy", "name")
 
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      })
-    }
+    // Create an audit log for category update
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,
+      action: "Category Update",
+      resource: "Category",
+      resourceId: categoryId,
+      details: {
+        previousValues: {
+          name: originalCategory.name,
+          description: originalCategory.description,
+          color: originalCategory.color,
+          isActive: originalCategory.isActive
+        },
+        newValues: {
+          name: name || originalCategory.name,
+          description: description || originalCategory.description,
+          color: color || originalCategory.color,
+          isActive: isActive !== undefined ? isActive : originalCategory.isActive
+        }
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,
@@ -115,16 +156,37 @@ router.delete("/:categoryId", authenticate, isAdmin, async (req, res) => {
         success: false,
         message: `Cannot delete category. It is being used by ${qrCodeCount} QR code(s).`,
       })
-    }
-
-    const category = await Category.findByIdAndDelete(categoryId)
-
+    }    // Get category details before deletion for logging
+    const category = await Category.findById(categoryId);
+    
     if (!category) {
       return res.status(404).json({
         success: false,
         message: "Category not found",
       })
     }
+    
+    // Store category details for audit log
+    const categoryDetails = {
+      name: category.name,
+      description: category.description,
+      color: category.color,
+      isActive: category.isActive
+    };
+    
+    await Category.findByIdAndDelete(categoryId);
+
+    // Create an audit log for category deletion
+    const { AuditLog } = require("../models/SystemSettings")
+    await AuditLog.create({
+      userEmail: req.user.email,
+      action: "Category Deletion",
+      resource: "Category",
+      resourceId: categoryId,
+      details: categoryDetails,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
 
     res.json({
       success: true,

@@ -8,6 +8,7 @@ interface User {
   name: string
   email: string
   role: "user" | "admin"
+  lastLogin?: string
 }
 
 interface AuthContextType {
@@ -21,6 +22,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   isAdmin: boolean
   isUser: boolean
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -33,14 +35,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const storedToken = typeof window !== "undefined" ? localStorage.getItem("token") : null
-    if (storedToken) {
-      setToken(storedToken)
-      fetchCurrentUser(storedToken)
-    } else {
+    initializeAuth()
+  }, [])
+
+  const initializeAuth = async () => {
+    try {
+      const storedToken = typeof window !== "undefined" ? localStorage.getItem("token") : null
+      const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null
+
+      if (storedToken && storedUser) {
+        setToken(storedToken)
+
+        // Try to parse stored user first
+        try {
+          const parsedUser = JSON.parse(storedUser)
+          setUser(parsedUser)
+        } catch (e) {
+          console.error("Error parsing stored user:", e)
+        }
+
+        // Verify token is still valid and refresh user data
+        await fetchCurrentUser(storedToken)
+      }
+    } catch (error) {
+      console.error("Error initializing auth:", error)
+      clearAuth()
+    } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   const fetchCurrentUser = async (authToken: string) => {
     try {
@@ -60,16 +83,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.user.id || data.user._id,
         }
         setUser(userData)
+
+        // Update stored user data
+        if (typeof window !== "undefined") {
+          localStorage.setItem("user", JSON.stringify(userData))
+        }
       } else {
-        localStorage.removeItem("token")
-        setToken(null)
+        // Token is invalid, clear auth
+        clearAuth()
       }
     } catch (error) {
       console.error("Error fetching current user:", error)
+      clearAuth()
+    }
+  }
+
+  const refreshUser = async () => {
+    if (token) {
+      await fetchCurrentUser(token)
+    }
+  }
+
+  const clearAuth = () => {
+    setUser(null)
+    setToken(null)
+    if (typeof window !== "undefined") {
       localStorage.removeItem("token")
-      setToken(null)
-    } finally {
-      setLoading(false)
+      localStorage.removeItem("user")
     }
   }
 
@@ -100,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", data.token)
+        localStorage.setItem("user", JSON.stringify(userData))
       }
     } catch (error) {
       console.error("Login error:", error)
@@ -134,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", data.token)
+        localStorage.setItem("user", JSON.stringify(userData))
       }
     } catch (error) {
       console.error("Signup error:", error)
@@ -164,13 +206,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setToken(data.token)
     setUser(userData)
-    localStorage.setItem("token", data.token)
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(userData))
+    }
   }
 
   const logout = () => {
-    setUser(null)
-    setToken(null)
-    localStorage.removeItem("token")
+    clearAuth()
   }
 
   const value = {
@@ -184,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
     isUser: user?.role === "user" || user?.role === "admin",
+    refreshUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

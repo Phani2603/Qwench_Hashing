@@ -1,6 +1,13 @@
 const jwt = require("jsonwebtoken")
 const User = require("../models/User")
 
+// JWT Security Check (Fix #4)
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  console.error('🚨 CRITICAL SECURITY ERROR: JWT_SECRET must be at least 32 characters long');
+  throw new Error('JWT_SECRET must be at least 32 characters long');
+}
+
 // Verify JWT token
 const authenticate = async (req, res, next) => {
   try {

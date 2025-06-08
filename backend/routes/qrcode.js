@@ -4,10 +4,13 @@ const User = require("../models/User")
 const Category = require("../models/Category")
 const Scan = require("../models/Scan")
 const { authenticate, isAdmin } = require("../middleware/auth")
+const { validateQrCodeGeneration } = require("../middleware/validation")
 const qrcode = require("qrcode")
 const { v4: uuidv4 } = require("uuid")
 const fs = require("fs")
 const path = require("path")
+const { createAuditLog } = require("../utils/auditLogger") // Add this line
+const { AuditLog } = require("../models/SystemSettings") // Add this line if needed
 
 const router = express.Router()
 
@@ -25,11 +28,11 @@ const getBackendUrl = () => {
   }
 
   // In development, prefer ngrok URL if available, otherwise use localhost
-  return process.env.BACKEND_URL || process.env.NGROK_URL || "http://localhost:5000"
+  return process.env.BACKEND_URL || process.env.NGROK_URL || "https://159e-122-171-97-68.ngrok-free.app"
 }
 
-// Generate and save QR code
-router.post("/generate", authenticate, isAdmin, async (req, res) => {
+// Generate and save QR code (Fix #5: Input Validation)
+router.post("/generate", authenticate, isAdmin, validateQrCodeGeneration, async (req, res) => {
   try {
     const { userId, categoryId, websiteURL, websiteTitle } = req.body
 
@@ -70,11 +73,9 @@ router.post("/generate", authenticate, isAdmin, async (req, res) => {
     }
 
     // Generate unique code ID
-    const codeId = uuidv4()
-
-    // Generate QR code data (scan URL) - use environment-appropriate URL
-    const backendUrl = getBackendUrl()
-    const qrData = `${backendUrl}/api/qrcodes/scan/${codeId}`
+    const codeId = uuidv4()    // Generate QR code data (verification URL) - should point to frontend
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+    const qrData = `${frontendUrl}/verify/${codeId}`
 
     console.log(`Generating QR code with URL: ${qrData}`) // Debug log
 
@@ -104,6 +105,20 @@ router.post("/generate", authenticate, isAdmin, async (req, res) => {
       { path: "assignedTo", select: "name email" },
       { path: "category", select: "name color" },
     ])
+
+    // Create an audit log for QR code generation
+    await createAuditLog(
+      req,
+      "QR Code Generated",
+      "QR Code Management",
+      codeId,
+      {
+        websiteTitle: websiteTitle,
+        websiteURL: websiteURL,
+        assignedToUserId: userId,
+        categoryId: categoryId
+      }
+    );
 
     res.status(201).json({
       success: true,
@@ -514,6 +529,21 @@ router.delete("/:codeId", authenticate, isAdmin, async (req, res) => {
     if (fs.existsSync(qrImagePath)) {
       fs.unlinkSync(qrImagePath)
     }
+
+    // Create an audit log for this deletion
+    await createAuditLog(
+      req,
+      "QR Code Deleted",
+      "QR Code Management", 
+      codeId,
+      {
+        websiteTitle: qrCode.websiteTitle,
+        websiteURL: qrCode.websiteURL,
+        scanCount: qrCode.scanCount,
+        assignedToUserId: qrCode.assignedTo,
+        categoryId: qrCode.category
+      }
+    );
 
     res.json({
       success: true,
