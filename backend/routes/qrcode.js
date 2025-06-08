@@ -154,7 +154,7 @@ router.get("/scan/:codeId", async (req, res) => {
 const getBackendUrl = () => {
   // In production, use the production URL
   if (process.env.NODE_ENV === "production") {
-    return process.env.BACKEND_URL || "https://your-production-domain.com"
+    return process.env.BACKEND_URL || "https://quench-rbac-backend-production.up.railway.app"
   }
 
   // In development, prefer ngrok URL if available, otherwise use localhost
