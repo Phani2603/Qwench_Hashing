@@ -67,8 +67,7 @@ export default function ScanQRCode() {
         setScanData({
           success: false,
           valid: false,
-        })
-      } finally {
+        })      } finally {
         setLoading(false)
       }
     }
@@ -81,32 +80,42 @@ export default function ScanQRCode() {
   // Countdown and redirect logic
   useEffect(() => {
     if (scanData?.valid && scanData.qrCode?.websiteURL) {
-      const timer = setInterval(() => {
+      let timer: NodeJS.Timeout | null = null
+      let progressTimer: NodeJS.Timeout | null = null
+
+      // Main countdown timer
+      timer = setInterval(() => {
         setCountdown((prev) => {
+          console.log('Countdown:', prev) // Debug log
           if (prev <= 1) {
+            console.log('Redirecting to:', scanData.qrCode!.websiteURL) // Debug log
             setRedirecting(true)
-            // Redirect to the website
-            window.location.href = scanData.qrCode!.websiteURL
+            
+            // Clear timers before redirect
+            if (timer) clearInterval(timer)
+            if (progressTimer) clearInterval(progressTimer)
+            
+            // Redirect after a small delay to ensure state updates
+            setTimeout(() => {
+              window.location.href = scanData.qrCode!.websiteURL
+            }, 100)
+            
             return 0
           }
-          return prev - 1
-        })
+          return prev - 1        })
       }, 1000)
 
-      // Progress bar animation
-      const progressTimer = setInterval(() => {
+      // Progress bar animation (updates every 100ms for smooth animation)
+      progressTimer = setInterval(() => {
         setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressTimer)
-            return 100
-          }
-          return prev + (100 / 30) // 3 seconds = 30 intervals of 100ms
+          const newProgress = prev + (100 / 20) // 3 seconds = 30 intervals of 100ms
+          return newProgress >= 100 ? 100 : newProgress
         })
       }, 100)
 
       return () => {
-        clearInterval(timer)
-        clearInterval(progressTimer)
+        if (timer) clearInterval(timer)
+        if (progressTimer) clearInterval(progressTimer)
       }
     }
   }, [scanData])
@@ -114,11 +123,16 @@ export default function ScanQRCode() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
-
+  
   const redirectNow = () => {
     if (scanData?.qrCode?.websiteURL) {
+      console.log('Manual redirect to:', scanData.qrCode.websiteURL) // Debug log
       setRedirecting(true)
-      window.location.href = scanData.qrCode.websiteURL
+      
+      // Add a small delay to ensure state updates
+      setTimeout(() => {
+        window.location.href = scanData.qrCode!.websiteURL
+      }, 100)
     }
   }
 
