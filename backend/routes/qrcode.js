@@ -603,6 +603,55 @@ router.get("/stats", authenticate, isAdmin, async (req, res) => {
       success: false,
       message: "Failed to fetch QR code statistics",
       error: error.message,
+    })  }
+})
+
+// Verify QR code (public route) - used by frontend verification page
+router.get("/verify/:codeId", async (req, res) => {
+  try {
+    const { codeId } = req.params
+
+    console.log(`QR Code verification attempt for: ${codeId}`) // Debug log
+
+    // Find the QR code
+    const qrCode = await QRCode.findOne({ codeId, isActive: true })
+      .populate("assignedTo", "name email")
+      .populate("category", "name color")
+
+    if (!qrCode) {
+      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
+      return res.status(404).json({
+        success: false,
+        valid: false,
+        message: "QR code not found or has been deactivated",
+      })
+    }
+
+    console.log(`QR Code verified successfully: ${codeId}`) // Debug log
+
+    res.json({
+      success: true,
+      valid: true,
+      qrCode: {
+        codeId: qrCode.codeId,
+        assignedTo: {
+          name: qrCode.assignedTo.name,
+          email: qrCode.assignedTo.email,
+        },
+        category: {
+          name: qrCode.category.name,
+          color: qrCode.category.color,
+        },
+        createdAt: qrCode.createdAt,
+      },
+    })
+  } catch (error) {
+    console.error("Error verifying QR code:", error)
+    res.status(500).json({
+      success: false,
+      valid: false,
+      message: "Error verifying QR code",
+      error: error.message,
     })
   }
 })
