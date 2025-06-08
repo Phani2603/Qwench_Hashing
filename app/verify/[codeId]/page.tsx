@@ -169,8 +169,8 @@ export default function VerifyQRCode() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl border-0">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-[#09090B] dark:to-[#09090B] p-2 sm:p-4">
+      <Card className="w-full max-w-[92%] sm:max-w-lg bg-white dark:bg-gray-800 shadow-xl border-0">
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             QR Code Verification
@@ -286,7 +286,7 @@ export default function VerifyQRCode() {
               )}
 
               {/* Footer Info */}
-              <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-900/50">
                 {scanLogged ? "Scan logged" : "Verification"} • Created {verification.qrCode?.createdAt ? formatDate(verification.qrCode.createdAt) : "N/A"}
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function VerifyQRCode() {
                 </AlertDescription>
               </Alert>
 
-              <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-900/50">
                 If you believe this is an error, please contact support
               </div>
             </div>
