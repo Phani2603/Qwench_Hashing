@@ -50,6 +50,39 @@ app.use(express.urlencoded({ extended: true }))
 // Serve static files (QR codes)
 app.use("/qrcodes", express.static(path.join(__dirname, "public/qrcodes")))
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  })
+})
+
+// Debug endpoint to test deployment (MOVED BEFORE ROUTES)
+app.get("/api/debug", (req, res) => {
+  res.json({
+    success: true,
+    message: "Debug endpoint working - Before route loading",
+    timestamp: new Date().toISOString(),
+    deploymentVersion: "v3.0-reorder-test",
+    server: "Railway deployment successful"
+  })
+})
+
+// CORS Debug endpoint (MOVED BEFORE ROUTES)
+app.get("/api/cors-test", (req, res) => {
+  res.json({
+    success: true,
+    message: "CORS is working",
+    origin: req.headers.origin,
+    corsOrigins: corsOrigins,
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  })
+})
+
 // Routes - with error handling (MINIMAL TEST)
 console.log("Loading routes...")
 try {
@@ -102,46 +135,6 @@ try {
   console.error("❌ Error loading admin analytics routes:", error.message)
 }
 */
-
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "Server is running",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  })
-})
-
-// Debug endpoint to test deployment
-app.get("/api/debug", (req, res) => {
-  res.json({
-    success: true,
-    message: "Debug endpoint working - Routes should be loading",
-    timestamp: new Date().toISOString(),
-    deploymentVersion: "v2.0-route-fix",
-    routesRegistered: [
-      "/api/auth",
-      "/api/user", 
-      "/api/admin",
-      "/api/qrcodes",
-      "/api/categories",
-      "/api/scans"
-    ]
-  })
-})
-
-// CORS Debug endpoint
-app.get("/api/cors-test", (req, res) => {
-  res.json({
-    success: true,
-    message: "CORS is working",
-    origin: req.headers.origin,
-    corsOrigins: corsOrigins,
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
-  })
-})
 
 // Error handling middleware
 app.use((err, req, res, next) => {

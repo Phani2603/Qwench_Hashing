@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUENCH RBAC - System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #1d4ed8;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .credentials {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 QUENCH RBAC System Tests</h1>
+          <div class="credentials">
+            <h3>🔑 Admin Credentials</h3>
+            <p><strong>Email:</strong> admin@quench.com</p>
+            <p><strong>Password:</strong> QuenchAdmin2024!</p>
+            <div style="margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 5px;">
+                <strong>⚠️ IMPORTANT:</strong> QR route syntax error has been fixed! Deploy to Railway to test.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Backend Health Check</h3>
+            <button class="test-button" onclick="testBackendHealth()">Test Backend</button>
+            <div id="health-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. CORS Configuration Test</h3>
+            <button class="test-button" onclick="testCORS()">Test CORS</button>
+            <div id="cors-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. QR Code Verification Test</h3>
+            <button class="test-button" onclick="testQRVerification()">Test QR Route</button>
+            <div id="qr-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Login Functionality Test</h3>
+            <button class="test-button" onclick="testLogin()">Test Login</button>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Quick Links</h3>
+            <button class="test-button" onclick="openFrontend()">Open Frontend</button>
+            <button class="test-button" onclick="openLoginPage()">Open Login Page</button>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://quench-rbac-backend-production.up.railway.app/api';
+        const FRONTEND_URL = 'https://quench-rbac-frontend.vercel.app';
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function testBackendHealth() {
+            showResult('health-result', '🔄 Testing backend health...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('health-result', `✅ Backend is healthy! Status: ${data.message}`, 'success');
+                } else {
+                    showResult('health-result', `❌ Backend error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult('health-result', `❌ Backend connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            showResult('cors-result', '🔄 Testing CORS configuration...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/cors-test`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                
+                if (corsHeader) {
+                    showResult('cors-result', `✅ CORS configured! Origin: ${corsHeader}`, 'success');
+                } else {
+                    showResult('cors-result', `⚠️ CORS headers present but may need adjustment`, 'info');
+                }
+            } catch (error) {
+                showResult('cors-result', `❌ CORS test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testQRVerification() {
+            showResult('qr-result', '🔄 Testing QR verification route...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/qrcodes/verify/test-code-123`);
+                const data = await response.json();
+                
+                if (response.status === 404 && data.message && data.message.includes('QR code not found')) {
+                    showResult('qr-result', '✅ QR verification route is working! (404 expected for test code)', 'success');
+                } else if (response.ok && data.valid !== undefined) {
+                    showResult('qr-result', '✅ QR verification route is working!', 'success');
+                } else {
+                    showResult('qr-result', `⚠️ Unexpected response: ${response.status}`, 'info');
+                }
+            } catch (error) {
+                showResult('qr-result', `❌ QR verification test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            showResult('login-result', '🔄 Testing login functionality...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@quench.com',
+                        password: 'QuenchAdmin2024!'
+                    }),
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('login-result', `✅ Login successful! Welcome ${data.user.email} (${data.user.role})`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    showResult('login-result', `❌ Login failed: ${errorData.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult('login-result', `❌ Login test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function openFrontend() {
+            window.open(FRONTEND_URL, '_blank');
+        }
+
+        function openLoginPage() {
+            window.open(`${FRONTEND_URL}/login`, '_blank');
+        }
+
+        // Auto-run health check on page load
+        window.onload = function() {
+            testBackendHealth();
+        };
+    </script>
+</body>
+</html>

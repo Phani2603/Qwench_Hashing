@@ -1,0 +1,60 @@
+[1mdiff --git a/backend/routes/qrcode.js b/backend/routes/qrcode.js[m
+[1mindex a2da088..8a498f5 100644[m
+[1m--- a/backend/routes/qrcode.js[m
+[1m+++ b/backend/routes/qrcode.js[m
+[36m@@ -603,6 +603,55 @@[m [mrouter.get("/stats", authenticate, isAdmin, async (req, res) => {[m
+       success: false,[m
+       message: "Failed to fetch QR code statistics",[m
+       error: error.message,[m
+[32m+[m[32m    })  }[m
+[32m+[m[32m})[m
+[32m+[m
+[32m+[m[32m// Verify QR code (public route) - used by frontend verification page[m
+[32m+[m[32mrouter.get("/verify/:codeId", async (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const { codeId } = req.params[m
+[32m+[m
+[32m+[m[32m    console.log(`QR Code verification attempt for: ${codeId}`) // Debug log[m
+[32m+[m
+[32m+[m[32m    // Find the QR code[m
+[32m+[m[32m    const qrCode = await QRCode.findOne({ codeId, isActive: true })[m
+[32m+[m[32m      .populate("assignedTo", "name email")[m
+[32m+[m[32m      .populate("category", "name color")[m
+[32m+[m
+[32m+[m[32m    if (!qrCode) {[m
+[32m+[m[32m      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log[m
+[32m+[m[32m      return res.status(404).json({[m
+[32m+[m[32m        success: false,[m
+[32m+[m[32m        valid: false,[m
+[32m+[m[32m        message: "QR code not found or has been deactivated",[m
+[32m+[m[32m      })[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    console.log(`QR Code verified successfully: ${codeId}`) // Debug log[m
+[32m+[m
+[32m+[m[32m    res.json({[m
+[32m+[m[32m      success: true,[m
+[32m+[m[32m      valid: true,[m
+[32m+[m[32m      qrCode: {[m
+[32m+[m[32m        codeId: qrCode.codeId,[m
+[32m+[m[32m        assignedTo: {[m
+[32m+[m[32m          name: qrCode.assignedTo.name,[m
+[32m+[m[32m          email: qrCode.assignedTo.email,[m
+[32m+[m[32m        },[m
+[32m+[m[32m        category: {[m
+[32m+[m[32m          name: qrCode.category.name,[m
+[32m+[m[32m          color: qrCode.category.color,[m
+[32m+[m[32m        },[m
+[32m+[m[32m        createdAt: qrCode.createdAt,[m
+[32m+[m[32m      },[m
+[32m+[m[32m    })[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error("Error verifying QR code:", error)[m
+[32m+[m[32m    res.status(500).json({[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      valid: false,[m
+[32m+[m[32m      message: "Error verifying QR code",[m
+[32m+[m[32m      error: error.message,[m
+     })[m
+   }[m
+ })[m
