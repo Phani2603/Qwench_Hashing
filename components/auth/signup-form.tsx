@@ -11,13 +11,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, User, Mail, Lock } from "lucide-react"
+import PasswordStrength from "@/components/ui/password-strength"
+import { Loader2, User, Mail, Lock, Eye, EyeOff } from "lucide-react"
 
 export default function SignupForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -31,14 +34,12 @@ export default function SignupForm() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long")
       setLoading(false)
       return
     }
+
+    // Password validation will be handled by backend
+    // Remove frontend validation to let backend provide detailed error messages
 
     try {
       await signup(name, email, password)
@@ -111,14 +112,22 @@ export default function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pl-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
+                  className="pl-10 pr-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {password && <PasswordStrength password={password} showChecklist={true} />}
             </div>
 
             <div className="space-y-2">
@@ -129,13 +138,20 @@ export default function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
                   id="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="pl-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
+                  className="pl-10 pr-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

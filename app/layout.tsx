@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "QUENCH - Role-Based Access Control",
   description: "A comprehensive role-based access control system built with Next.js 15 and Node.js",
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

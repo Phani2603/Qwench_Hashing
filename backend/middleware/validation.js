@@ -23,11 +23,11 @@ const userRegistrationSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Name can only contain letters and spaces'
     }),
-  email: Joi.string().email().required().lowercase(),
-  password: Joi.string().min(8).max(128).required()
+  email: Joi.string().email().required().lowercase(),  password: Joi.string().min(8).max(128).required()
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .messages({
-      'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character'
+      'string.min': 'Password must be at least 8 characters long',
+      'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character (@$!%*?&)'
     })
 });
 
@@ -50,7 +50,8 @@ const passwordChangeSchema = Joi.object({
   newPassword: Joi.string().min(8).max(128).required()
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .messages({
-      'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character'
+      'string.min': 'New password must be at least 8 characters long',
+      'string.pattern.base': 'New password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character (@$!%*?&)'
     })
 });
 
