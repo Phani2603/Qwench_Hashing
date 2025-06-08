@@ -20,6 +20,136 @@ if (!fs.existsSync(qrCodeDir)) {
   fs.mkdirSync(qrCodeDir, { recursive: true })
 }
 
+// ========= PUBLIC ROUTES FIRST (NO AUTHENTICATION) =========
+
+// Verify QR code (public route) - used by frontend verification page
+// IMPORTANT: Define before other routes with parameters to ensure correct matching
+router.get("/verify/:codeId", async (req, res) => {
+  try {
+    const { codeId } = req.params
+
+    console.log(`QR Code verification attempt for: ${codeId}`) // Debug log
+
+    // Find the QR code
+    const qrCode = await QRCode.findOne({ codeId, isActive: true })
+      .populate("assignedTo", "name email")
+      .populate("category", "name color")
+
+    if (!qrCode) {
+      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
+      return res.status(404).json({
+        success: false,
+        valid: false,
+        message: "QR code not found or has been deactivated",
+      })
+    }
+
+    console.log(`QR Code verified successfully: ${codeId}`) // Debug log
+
+    res.json({
+      success: true,
+      valid: true,
+      qrCode: {
+        codeId: qrCode.codeId,
+        assignedTo: {
+          name: qrCode.assignedTo.name,
+          email: qrCode.assignedTo.email,
+        },
+        category: {
+          name: qrCode.category.name,
+          color: qrCode.category.color,
+        },
+        createdAt: qrCode.createdAt,
+      },
+    })
+  } catch (error) {
+    console.error("Error verifying QR code:", error)
+    res.status(500).json({
+      success: false,
+      valid: false,
+      message: "Error verifying QR code",
+      error: error.message,
+    })  }
+})
+
+// Scan QR code and redirect to website (public route)
+router.get("/scan/:codeId", async (req, res) => {
+  try {
+    const { codeId } = req.params
+
+    console.log(`QR Code scan attempt for: ${codeId}`) // Debug log
+
+    // Find the QR code
+    const qrCode = await QRCode.findOne({ codeId })
+      .populate("assignedTo", "name email")
+      .populate("category", "name color")
+
+    if (!qrCode) {
+      console.log(`QR Code not found: ${codeId}`) // Debug log
+      return res.status(404).send(`
+        <html>
+          <head><title>QR Code Not Found</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>QR Code Not Found</h1>
+            <p>The QR code you scanned is invalid or has been deactivated.</p>
+            <p><small>Code ID: ${codeId}</small></p>
+          </body>
+        </html>
+      `)
+    }
+
+    // Get client information
+    const userAgent = req.headers["user-agent"] || "Unknown"
+    const ipAddress = req.ip || req.connection.remoteAddress || "Unknown"
+
+    // Simple device detection
+    let deviceType = "Desktop"
+    if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
+      deviceType = "Mobile"
+    } else if (/Tablet|iPad/.test(userAgent)) {
+      deviceType = "Tablet"
+    }
+
+    console.log(`Logging scan for QR code: ${codeId}, redirecting to: ${qrCode.websiteURL}`) // Debug log
+
+    // Log the scan
+    const scan = new Scan({
+      qrCode: qrCode._id,
+      codeId: codeId,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+      deviceInfo: {
+        device: deviceType,
+        userAgent: userAgent,
+      },
+      timestamp: new Date(),
+    })
+
+    await scan.save()
+
+    // Update scan count
+    await QRCode.findByIdAndUpdate(qrCode._id, {
+      $inc: { scanCount: 1 },
+      lastScanned: new Date(),
+    })
+
+    // Redirect to the actual website
+    res.redirect(302, qrCode.websiteURL)
+  } catch (error) {
+    console.error("Error processing QR scan:", error)
+    res.status(500).send(`
+      <html>
+        <head><title>Error</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1>Error Processing QR Code</h1>
+          <p>There was an error processing your QR code scan. Please try again.</p>
+          <p><small>Error: ${error.message}</small></p>
+        </body>
+      </html>
+    `)
+  }
+})
+
 // Helper function to get the correct backend URL
 const getBackendUrl = () => {
   // In production, use the production URL
@@ -133,84 +263,6 @@ router.post("/generate", authenticate, isAdmin, validateQrCodeGeneration, async 
       message: "Failed to generate QR code",
       error: error.message,
     })
-  }
-})
-
-// Scan QR code and redirect to website (public route)
-router.get("/scan/:codeId", async (req, res) => {
-  try {
-    const { codeId } = req.params
-
-    console.log(`QR Code scan attempt for: ${codeId}`) // Debug log
-
-    // Find the QR code
-    const qrCode = await QRCode.findOne({ codeId })
-      .populate("assignedTo", "name email")
-      .populate("category", "name color")
-
-    if (!qrCode) {
-      console.log(`QR Code not found: ${codeId}`) // Debug log
-      return res.status(404).send(`
-        <html>
-          <head><title>QR Code Not Found</title></head>
-          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1>QR Code Not Found</h1>
-            <p>The QR code you scanned is invalid or has been deactivated.</p>
-            <p><small>Code ID: ${codeId}</small></p>
-          </body>
-        </html>
-      `)
-    }
-
-    // Get client information
-    const userAgent = req.headers["user-agent"] || "Unknown"
-    const ipAddress = req.ip || req.connection.remoteAddress || "Unknown"
-
-    // Simple device detection
-    let deviceType = "Desktop"
-    if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
-      deviceType = "Mobile"
-    } else if (/Tablet|iPad/.test(userAgent)) {
-      deviceType = "Tablet"
-    }
-
-    console.log(`Logging scan for QR code: ${codeId}, redirecting to: ${qrCode.websiteURL}`) // Debug log
-
-    // Log the scan
-    const scan = new Scan({
-      qrCode: qrCode._id,
-      codeId: codeId,
-      ipAddress: ipAddress,
-      userAgent: userAgent,
-      deviceInfo: {
-        device: deviceType,
-        userAgent: userAgent,
-      },
-      timestamp: new Date(),
-    })
-
-    await scan.save()
-
-    // Update scan count
-    await QRCode.findByIdAndUpdate(qrCode._id, {
-      $inc: { scanCount: 1 },
-      lastScanned: new Date(),
-    })
-
-    // Redirect to the actual website
-    res.redirect(302, qrCode.websiteURL)
-  } catch (error) {
-    console.error("Error processing QR scan:", error)
-    res.status(500).send(`
-      <html>
-        <head><title>Error</title></head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-          <h1>Error Processing QR Code</h1>
-          <p>There was an error processing your QR code scan. Please try again.</p>
-          <p><small>Error: ${error.message}</small></p>
-        </body>
-      </html>
-    `)
   }
 })
 
@@ -554,103 +606,6 @@ router.delete("/:codeId", authenticate, isAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete QR code",
-      error: error.message,
-    })
-  }
-})
-
-// Get QR code statistics (admin only)
-router.get("/stats", authenticate, isAdmin, async (req, res) => {
-  try {
-    const totalQRCodes = await QRCode.countDocuments()
-    const totalScans = await Scan.countDocuments()
-
-    const categoryStats = await QRCode.aggregate([
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "categoryInfo",
-        },
-      },
-      {
-        $unwind: "$categoryInfo",
-      },
-      {
-        $group: {
-          _id: "$category",
-          name: { $first: "$categoryInfo.name" },
-          color: { $first: "$categoryInfo.color" },
-          count: { $sum: 1 },
-          totalScans: { $sum: "$scanCount" },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-    ])
-
-    res.json({
-      success: true,
-      totalQRCodes,
-      totalScans,
-      categoryStats,
-    })  } catch (error) {
-    console.error("Error fetching QR code stats:", error)
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch QR code statistics",
-      error: error.message,
-    })
-  }
-})
-
-// Verify QR code (public route) - used by frontend verification page
-router.get("/verify/:codeId", async (req, res) => {
-  try {
-    const { codeId } = req.params
-
-    console.log(`QR Code verification attempt for: ${codeId}`) // Debug log
-
-    // Find the QR code
-    const qrCode = await QRCode.findOne({ codeId, isActive: true })
-      .populate("assignedTo", "name email")
-      .populate("category", "name color")
-
-    if (!qrCode) {
-      console.log(`QR Code not found or inactive: ${codeId}`) // Debug log
-      return res.status(404).json({
-        success: false,
-        valid: false,
-        message: "QR code not found or has been deactivated",
-      })
-    }
-
-    console.log(`QR Code verified successfully: ${codeId}`) // Debug log
-
-    res.json({
-      success: true,
-      valid: true,
-      qrCode: {
-        codeId: qrCode.codeId,
-        assignedTo: {
-          name: qrCode.assignedTo.name,
-          email: qrCode.assignedTo.email,
-        },
-        category: {
-          name: qrCode.category.name,
-          color: qrCode.category.color,
-        },
-        createdAt: qrCode.createdAt,
-      },
-    })
-  } catch (error) {
-    console.error("Error verifying QR code:", error)
-    res.status(500).json({
-      success: false,
-      valid: false,
-      message: "Error verifying QR code",
       error: error.message,
     })
   }
