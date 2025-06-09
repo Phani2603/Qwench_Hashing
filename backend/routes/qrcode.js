@@ -725,4 +725,86 @@ router.delete("/:codeId", authenticate, isAdmin, async (req, res) => {
   }
 })
 
+// Stats endpoint for dashboard analytics
+router.get("/stats", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    let matchCondition = {};
+    
+    // If not admin, only show user's own QR codes
+    if (userRole !== 'admin') {
+      matchCondition.assignedTo = userId;
+    }
+
+    // Get total QR codes count
+    const totalQRCodes = await QRCode.countDocuments(matchCondition);
+    
+    // Get active QR codes count
+    const activeQRCodes = await QRCode.countDocuments({
+      ...matchCondition,
+      isActive: { $ne: false }
+    });
+
+    // Get total scans count for user's QR codes
+    let totalScans = 0;
+    let recentScans = 0;
+
+    if (userRole === 'admin') {
+      // Admin sees all scans
+      totalScans = await Scan.countDocuments();
+      
+      // Recent scans (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      recentScans = await Scan.countDocuments({
+        timestamp: { $gte: thirtyDaysAgo }
+      });
+    } else {
+      // Users see only scans for their QR codes
+      const userQRCodes = await QRCode.find(matchCondition, '_id');
+      const qrCodeIds = userQRCodes.map(qr => qr._id);
+      
+      totalScans = await Scan.countDocuments({
+        qrCode: { $in: qrCodeIds }
+      });
+
+      // Recent scans (last 30 days) for user's QR codes
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      recentScans = await Scan.countDocuments({
+        qrCode: { $in: qrCodeIds },
+        timestamp: { $gte: thirtyDaysAgo }
+      });
+    }
+
+    // Get top performing QR codes
+    const topQRCodes = await QRCode.find(matchCondition)
+      .sort({ scanCount: -1 })
+      .limit(5)
+      .populate('category', 'name color')
+      .select('codeId websiteTitle scanCount category');
+
+    res.json({
+      success: true,
+      stats: {
+        totalQRCodes,
+        totalScans,
+        activeQRCodes,
+        recentScans,
+        topQRCodes: topQRCodes || []
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch stats",
+      error: error.message
+    });
+  }
+});
+
 module.exports = router
