@@ -13,6 +13,10 @@ const qrCodeSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    fileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false, // Optional for backward compatibility
+    },
     websiteURL: {
       type: String,
       required: true,

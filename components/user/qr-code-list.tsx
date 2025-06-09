@@ -231,7 +231,7 @@ export default function QRCodeList() {
             <div className="flex flex-col items-center space-y-4">
               <div className="bg-white p-4 rounded-lg border">
                 <img
-                  src={`${API_BASE_URL.replace("/api", "")}${currentQR.imageURL}`}
+                  src={`${API_BASE_URL}${currentQR.imageURL}`}
                   alt="QR Code"
                   className="w-64 h-64"
                   onError={(e) => {

@@ -5,20 +5,15 @@ const Category = require("../models/Category")
 const Scan = require("../models/Scan")
 const { authenticate, isAdmin } = require("../middleware/auth")
 const { validateQrCodeGeneration } = require("../middleware/validation")
-const qrcode = require("qrcode")
 const { v4: uuidv4 } = require("uuid")
-const fs = require("fs")
-const path = require("path")
-const { createAuditLog } = require("../utils/auditLogger") // Add this line
-const { AuditLog } = require("../models/SystemSettings") // Add this line if needed
+const { createAuditLog } = require("../utils/auditLogger")
+const { 
+  generateAndStoreQRCode, 
+  getQRCodeFromGridFS, 
+  deleteQRCodeFromGridFS 
+} = require("../utils/gridfs")
 
 const router = express.Router()
-
-// Create QR code directory if it doesn't exist
-const qrCodeDir = path.join(__dirname, "../public/qrcodes")
-if (!fs.existsSync(qrCodeDir)) {
-  fs.mkdirSync(qrCodeDir, { recursive: true })
-}
 
 // ========= PUBLIC ROUTES FIRST (NO AUTHENTICATION) =========
 
@@ -142,6 +137,52 @@ router.post("/verify/:codeId/scan", async (req, res) => {
       message: "Error logging scan",
       error: error.message,
     })
+  }
+})
+
+// Serve QR code images from GridFS (public route)
+router.get("/image/:codeId", async (req, res) => {
+  try {
+    const { codeId } = req.params;
+    
+    console.log(`Retrieving QR code image for: ${codeId}`);
+    
+    // Get image stream from GridFS
+    const downloadStream = await getQRCodeFromGridFS(codeId);
+    
+    if (!downloadStream) {
+      return res.status(404).json({
+        success: false,
+        message: 'QR code image not found'
+      });
+    }
+    
+    // Set appropriate headers
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `inline; filename="${codeId}.png"`);
+    res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    
+    // Handle stream errors
+    downloadStream.on('error', (error) => {
+      console.error('Error streaming QR code image:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Error retrieving QR code image'
+        });
+      }
+    });
+    
+    // Pipe the image stream to response
+    downloadStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Error retrieving QR code image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving QR code image',
+      error: error.message
+    });
   }
 })
 
@@ -277,26 +318,22 @@ router.post("/generate", authenticate, isAdmin, validateQrCodeGeneration, async 
     }
 
     // Generate unique code ID
-    const codeId = uuidv4()    // Generate QR code data (verification URL) - should point to frontend
+    const codeId = uuidv4()
+
+    // Generate QR code data (verification URL) - should point to frontend
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
     const qrData = `${frontendUrl}/verify/${codeId}`
 
     console.log(`Generating QR code with URL: ${qrData}`) // Debug log
 
-    // Generate QR code image
-    const qrImageFileName = `${codeId}.png`
-    const qrImagePath = path.join(qrCodeDir, qrImageFileName)
-
-    await qrcode.toFile(qrImagePath, qrData, {
-      errorCorrectionLevel: "H",
-      margin: 1,
-      width: 300,
-    })
+    // Generate and store QR code in MongoDB GridFS
+    const { fileId, imageURL } = await generateAndStoreQRCode(codeId, qrData);
 
     // Create QR code record in database
     const qrCodeRecord = new QRCode({
       codeId,
-      imageURL: `/qrcodes/${qrImageFileName}`,
+      imageURL, // This will be the API endpoint to retrieve the image
+      fileId,   // Store the GridFS file ID for reference
       websiteURL,
       websiteTitle,
       assignedTo: userId,
@@ -650,10 +687,13 @@ router.delete("/:codeId", authenticate, isAdmin, async (req, res) => {
     // Delete associated scans
     await Scan.deleteMany({ codeId })
 
-    // Delete the QR code image file
-    const qrImagePath = path.join(qrCodeDir, `${codeId}.png`)
-    if (fs.existsSync(qrImagePath)) {
-      fs.unlinkSync(qrImagePath)
+    // Delete the QR code image from GridFS
+    try {
+      await deleteQRCodeFromGridFS(codeId);
+      console.log(`Deleted QR code image for ${codeId} from GridFS`);
+    } catch (error) {
+      console.error(`Error deleting QR code image for ${codeId} from GridFS:`, error);
+      // Don't fail the whole operation if image deletion fails
     }
 
     // Create an audit log for this deletion

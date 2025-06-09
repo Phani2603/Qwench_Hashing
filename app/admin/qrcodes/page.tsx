@@ -724,7 +724,7 @@ function QRCodeManagementContent() {
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-lg border flex justify-center">
                   <img
-                    src={`${API_BASE_URL.replace("/api", "")}${selectedQRDetails.imageURL}`}
+                    src={`${API_BASE_URL}${selectedQRDetails.imageURL}`}
                     alt="QR Code"
                     className="w-32 h-32"
                     onError={(e) => {

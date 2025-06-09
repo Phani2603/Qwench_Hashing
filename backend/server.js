@@ -47,8 +47,8 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// Serve static files (QR codes)
-app.use("/qrcodes", express.static(path.join(__dirname, "public/qrcodes")))
+// Note: QR code images are now served via GridFS endpoints in the qrcode routes
+// No longer need static file serving for /qrcodes
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -166,6 +166,15 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Connected to MongoDB Atlas")
+    
+    // Initialize GridFS for QR code storage
+    try {
+      const { initGridFS } = require('./utils/gridfs');
+      initGridFS();
+      console.log("✅ GridFS initialized for QR code storage");
+    } catch (error) {
+      console.error("❌ Error initializing GridFS:", error.message);
+    }
 
     // Start server
     const PORT = process.env.PORT || 5000
