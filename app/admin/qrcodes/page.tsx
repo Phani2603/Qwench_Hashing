@@ -295,10 +295,57 @@ function QRCodeManagementContent() {
 
     setMessage(`QR codes exported as ${format.toUpperCase()}`)
   }
-
   const viewQRDetails = (qr: QRCode) => {
     setSelectedQRDetails(qr)
     setViewQRDialog(true)
+  }
+  
+  // Function to download high-quality QR code image
+  const downloadQRCode = (qr: QRCode) => {
+    if (!qr || !qr.codeId) return
+    
+    // Show loading toast
+    setMessage("Downloading high-quality QR code...")
+    
+    // Create a direct download by opening URL in new tab
+    const downloadUrl = `${API_BASE_URL}/qrcodes/download/${qr.codeId}`
+    
+    // Download with auth header
+    fetch(downloadUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to download QR code')
+        }
+        return response.blob()
+      })
+      .then(blob => {
+        // Create object URL for the blob
+        const url = window.URL.createObjectURL(blob)
+        
+        // Create an anchor to trigger download
+        const a = document.createElement('a')
+        a.style.display = 'none'
+        a.href = url
+        a.download = `QRCode-${qr.websiteTitle.replace(/\s+/g, '-')}-${qr.codeId}.png`
+        
+        // Append to document, click, then remove
+        document.body.appendChild(a)
+        a.click()
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        
+        setMessage("QR code downloaded successfully")
+      })
+      .catch(error => {
+        console.error('Error downloading QR code:', error)
+        setError("Failed to download QR code")
+      })
   }
 
   if (loading) {
@@ -633,10 +680,12 @@ function QRCodeManagementContent() {
                                 {new Date(qrCode.createdAt).toLocaleDateString()}
                               </span>
                             </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center space-x-2">
+                            <td className="py-3 px-4">                            <div className="flex items-center space-x-2">
                                 <Button variant="ghost" size="sm" onClick={() => viewQRDetails(qrCode)}>
                                   <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => downloadQRCode(qrCode)}>
+                                  <Download className="h-4 w-4" />
                                 </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -651,6 +700,14 @@ function QRCodeManagementContent() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => downloadQRCode(qrCode)}
+                                      disabled={actionLoading === qrCode.codeId}
+                                    >
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Download High-Quality PNG
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -778,9 +835,18 @@ function QRCodeManagementContent() {
                   </div>
                 </div>
               </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => setViewQRDialog(false)}>Close</Button>
+            )}            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => selectedQRDetails && downloadQRCode(selectedQRDetails)}
+                className="w-full sm:w-auto sm:flex-1 gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download High-Quality PNG
+              </Button>
+              <Button onClick={() => setViewQRDialog(false)} className="w-full sm:w-auto">
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

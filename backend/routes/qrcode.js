@@ -12,6 +12,7 @@ const {
   getQRCodeFromGridFS, 
   deleteQRCodeFromGridFS 
 } = require("../utils/gridfs")
+const qrcode = require('qrcode');
 
 const router = express.Router()
 
@@ -802,6 +803,63 @@ router.get("/stats", authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch stats",
+      error: error.message
+    });
+  }
+});
+
+// Download high-quality QR code image (authenticated endpoint)
+router.get("/download/:codeId", authenticate, async (req, res) => {
+  try {
+    const { codeId } = req.params;
+    
+    console.log(`Generating high-quality QR code download for: ${codeId}`);
+    
+    // Find the QR code entry to get website title for filename
+    const qrCode = await QRCode.findOne({ codeId });
+    
+    if (!qrCode) {
+      return res.status(404).json({
+        success: false,
+        message: 'QR code not found'
+      });
+    }
+    
+    // Generate a high-quality QR code (600x600 pixels)
+    const qrData = `${process.env.FRONTEND_URL || 'https://quench-rbac-frontend.vercel.app'}/verify/${codeId}`;
+    const qrBuffer = await qrcode.toBuffer(qrData, {
+      errorCorrectionLevel: 'H',
+      type: 'png',
+      margin: 1,
+      width: 600, // Higher resolution
+      color: {
+        dark: '#000000', // Black dots
+        light: '#ffffff' // White background
+      }
+    });
+    
+    // Set response headers for download
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `attachment; filename="QRCode-${qrCode.websiteTitle.replace(/\s+/g, '-')}-${codeId}.png"`);
+    res.set('Content-Length', qrBuffer.length);
+    
+    // Send the QR code image buffer
+    res.send(qrBuffer);
+    
+    // Log the download for audit purposes
+    await createAuditLog({
+      user: req.user._id,
+      action: 'Downloaded QR Code',
+      resource: 'QR Code',
+      resourceId: qrCode._id,
+      details: `Downloaded high-quality QR image for: ${qrCode.websiteTitle}`
+    });
+    
+  } catch (error) {
+    console.error('Error generating high-quality QR code:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate QR code for download',
       error: error.message
     });
   }
