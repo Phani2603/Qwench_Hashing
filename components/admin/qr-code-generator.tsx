@@ -699,11 +699,11 @@ export default function QRCodeGenerator() {
             <div className="flex flex-col items-center space-y-4">
               <div className="bg-white p-4 rounded-lg border">
                 <img
-                  src={`${API_BASE_URL}${currentQR.imageURL}`}
+                  src={`${API_BASE_URL}/qrcodes/image/${currentQR.codeId}`}
                   alt="QR Code"
                   className="w-64 h-64"
                   onError={(e) => {
-                    console.error("Failed to load QR code image:", currentQR.imageURL)
+                    console.error("Failed to load QR code image:", currentQR.codeId)
                     e.currentTarget.src = "/placeholder.svg?height=256&width=256"
                   }}
                 />

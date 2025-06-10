@@ -724,10 +724,11 @@ function QRCodeManagementContent() {
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-lg border flex justify-center">
                   <img
-                    src={`${API_BASE_URL}${selectedQRDetails.imageURL}`}
+                    src={`${API_BASE_URL}/qrcodes/image/${selectedQRDetails.codeId}`}
                     alt="QR Code"
                     className="w-32 h-32"
                     onError={(e) => {
+                      console.error("Failed to load QR code image:", selectedQRDetails.codeId)
                       e.currentTarget.src = "/placeholder.svg?height=128&width=128"
                     }}
                   />

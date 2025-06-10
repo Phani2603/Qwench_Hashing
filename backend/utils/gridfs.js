@@ -57,10 +57,9 @@ const generateAndStoreQRCode = async (codeId, qrData) => {
         // FIX: Use uploadStream.id instead of undefined file._id
         const fileId = uploadStream.id;
         console.log(`✅ QR code stored successfully in GridFS with ID: ${fileId}`);
-        
-        resolve({
+          resolve({
           fileId: fileId,
-          imageURL: `/qrcodes/image/${codeId}`
+          imageURL: `/api/qrcodes/image/${codeId}`
         });
       });
       

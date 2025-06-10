@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Code Image Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        .status {
+            font-weight: bold;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        img {
+            border: 1px solid #eee;
+            max-width: 200px;
+            max-height: 200px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+        button {
+            padding: 8px 16px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0051a2;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Code Image Loading Test</h1>
+    <p>This tool tests various URL formats for loading QR code images from the backend.</p>
+
+    <div class="container">
+        <div class="test-case">
+            <h2>Test Configuration</h2>
+            <div>
+                <label>API Base URL:</label>
+                <input type="text" id="apiBaseUrl" value="https://quench-rbac-backend-production.up.railway.app/api">
+            </div>
+            <div>
+                <label>QR Code ID:</label>
+                <input type="text" id="qrCodeId" placeholder="Enter a QR Code ID to test">
+            </div>
+            <button onclick="runTests()">Run Tests</button>
+        </div>
+
+        <div class="test-case">
+            <h2>Test Results</h2>
+            <div id="results">
+                <p>Click "Run Tests" to start testing...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addResult(title, imageUrl, success, message = '') {
+            const resultsDiv = document.getElementById('results');
+            
+            const resultItem = document.createElement('div');
+            resultItem.style.marginBottom = '20px';
+            resultItem.style.borderBottom = '1px solid #eee';
+            resultItem.style.paddingBottom = '10px';
+
+            const resultTitle = document.createElement('h3');
+            resultTitle.textContent = title;
+            resultItem.appendChild(resultTitle);
+
+            const statusDiv = document.createElement('div');
+            statusDiv.classList.add('status');
+            statusDiv.classList.add(success ? 'success' : 'error');
+            statusDiv.textContent = success ? 'SUCCESS' : 'FAILED';
+            resultItem.appendChild(statusDiv);
+
+            const urlDiv = document.createElement('div');
+            urlDiv.style.marginTop = '8px';
+            urlDiv.style.fontSize = '12px';
+            urlDiv.style.wordBreak = 'break-all';
+            urlDiv.innerHTML = `<strong>URL:</strong> ${imageUrl}`;
+            resultItem.appendChild(urlDiv);
+
+            if (message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.style.marginTop = '5px';
+                messageDiv.style.fontSize = '12px';
+                messageDiv.innerHTML = `<strong>Message:</strong> ${message}`;
+                resultItem.appendChild(messageDiv);
+            }
+
+            // Add an image element to see the result
+            const img = document.createElement('img');
+            img.alt = 'QR Code';
+            img.src = imageUrl;
+            img.onerror = function() {
+                statusDiv.textContent = 'FAILED - Image could not be loaded';
+                statusDiv.classList.remove('success');
+                statusDiv.classList.add('error');
+            };
+            img.onload = function() {
+                statusDiv.textContent = 'SUCCESS - Image loaded properly';
+                statusDiv.classList.remove('error');
+                statusDiv.classList.add('success');
+            };
+            resultItem.appendChild(img);
+
+            resultsDiv.appendChild(resultItem);
+        }
+
+        function runTests() {
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value.trim();
+            const qrCodeId = document.getElementById('qrCodeId').value.trim();
+
+            if (!qrCodeId) {
+                document.getElementById('results').innerHTML = '<p class="error">Please enter a QR Code ID</p>';
+                return;
+            }
+
+            // Test Case 1: Direct API path with /api 
+            addResult(
+                'Method 1: Direct API endpoint with /api prefix',
+                `${apiBaseUrl}/qrcodes/image/${qrCodeId}`,
+                true
+            );
+
+            // Test Case 2: Without /api prefix (might need to be fixed)
+            const baseWithoutApi = apiBaseUrl.replace('/api', '');
+            addResult(
+                'Method 2: API URL without /api prefix',
+                `${baseWithoutApi}/qrcodes/image/${qrCodeId}`,
+                true
+            );
+
+            // Test Case 3: Using imageURL as is (old method that has issues)
+            const oldImageUrl = `/qrcodes/image/${qrCodeId}`;
+            addResult(
+                'Method 3: Using imageURL directly (problematic)',
+                `${apiBaseUrl}${oldImageUrl}`, 
+                true
+            );
+        }
+    </script>
+</body>
+</html>
