@@ -67,7 +67,7 @@ function AdminDashboardContent() {
         if (qrResponse.ok) {
           const qrData = await qrResponse.json()
           qrStats = {
-            totalQRCodes: qrData.totalQRCodes || 0,
+            totalQRCodes: qrData.stats?.totalQRCodes || qrData.totalQRCodes || 0,
           }
         } else {
           // Fallback: fetch all QR codes and count them

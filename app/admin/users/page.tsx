@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -52,6 +53,11 @@ import {
   TrendingUp,
   Activity,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Mail,
 } from "lucide-react"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
@@ -114,6 +120,15 @@ function UserManagementContent() {
   const [refreshing, setRefreshing] = useState(false)
   const [viewUserDialog, setViewUserDialog] = useState(false)
   const [selectedUserDetails, setSelectedUserDetails] = useState<User | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [usersPerPage] = useState(10)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [selectedUserForEmail, setSelectedUserForEmail] = useState<User | null>(null)
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailBody, setEmailBody] = useState("")
+  const [emailSending, setEmailSending] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -137,6 +152,71 @@ function UserManagementContent() {
 
     setFilteredUsers(filtered)
   }, [users, searchTerm, roleFilter, statusFilter])
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage)
+  const startIndex = (currentPage - 1) * usersPerPage
+  const endIndex = startIndex + usersPerPage
+  const currentUsers = filteredUsers.slice(startIndex, endIndex)
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, roleFilter, statusFilter])
+
+  // Email functionality
+  const sendEmailToUser = async (user: User) => {
+    setSelectedUserForEmail(user)
+    setEmailSubject(`Message from ${currentUser?.name || 'Admin'}`)
+    setEmailBody(`Hello ${user.name},\n\nThis is a message from the administration team.\n\nBest regards,\nAdmin Team`)
+    setEmailDialogOpen(true)
+  }
+
+  const handleSendEmail = async () => {
+    if (!selectedUserForEmail || !emailSubject.trim() || !emailBody.trim()) {
+      setError("Please fill in all email fields")
+      return
+    }
+
+    setEmailSending(true)
+    setError("")
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${selectedUserForEmail._id}/email`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: emailSubject,
+          message: emailBody,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setMessage(`Email sent successfully to ${selectedUserForEmail.name}`)
+        setEmailDialogOpen(false)
+        setSelectedUserForEmail(null)
+        setEmailSubject("")
+        setEmailBody("")
+      } else {
+        setError(data.message || "Failed to send email")
+      }
+    } catch (err) {
+      setError("Error sending email")
+    } finally {
+      setEmailSending(false)
+    }
+  }
+
+  // Pagination functions
+  const goToFirstPage = () => setCurrentPage(1)
+  const goToLastPage = () => setCurrentPage(totalPages)
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1))
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
 
   const fetchUsers = async () => {
     try {
@@ -563,115 +643,190 @@ function UserManagementContent() {
                       : "No users found."}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4">User</th>
-                          <th className="text-left py-3 px-4">Role</th>
-                          <th className="text-left py-3 px-4">Status</th>
-                          <th className="text-left py-3 px-4">Last Login</th>
-                          <th className="text-left py-3 px-4">Created</th>
-                          <th className="text-left py-3 px-4">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.map((user) => (
-                          <tr key={user._id} className="border-b hover:bg-muted/50">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center space-x-4">
-                                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-foreground">{getInitials(user.name)}</span>
-                                </div>
-                                <div>
-                                  <p className="font-medium text-foreground">{user.name}</p>
-                                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                                {user.role === "admin" ? "Administrator" : "User"}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge variant={user.isActive ? "default" : "destructive"}>
-                                {user.isActive ? "Active" : "Inactive"}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "Never"}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {new Date(user.createdAt).toLocaleDateString()}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center space-x-2">
-                                <Button variant="ghost" size="sm" onClick={() => viewUserDetails(user)}>
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                {canModifyUser(user) && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        {actionLoading === user._id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                      <DropdownMenuSeparator />
-                                      {user.role === "user" ? (
-                                        <DropdownMenuItem
-                                          onClick={() => updateUserRole(user._id, "admin")}
-                                          disabled={actionLoading === user._id}
-                                        >
-                                          <Shield className="mr-2 h-4 w-4" />
-                                          Promote to Admin
-                                        </DropdownMenuItem>
-                                      ) : (
-                                        <DropdownMenuItem
-                                          onClick={() => updateUserRole(user._id, "user")}
-                                          disabled={actionLoading === user._id}
-                                        >
-                                          <UserCheck className="mr-2 h-4 w-4" />
-                                          Demote to User
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setUserToDelete(user)
-                                          setDeleteDialogOpen(true)
-                                        }}
-                                        disabled={actionLoading === user._id}
-                                        className="text-destructive"
-                                      >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete User
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </div>
-                            </td>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-4">User</th>
+                            <th className="text-left py-3 px-4">Role</th>
+                            <th className="text-left py-3 px-4">Status</th>
+                            <th className="text-left py-3 px-4">Last Login</th>
+                            <th className="text-left py-3 px-4">Created</th>
+                            <th className="text-left py-3 px-4">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {currentUsers.map((user) => (
+                            <tr key={user._id} className="border-b hover:bg-muted/50">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-4">
+                                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                                    <span className="text-sm font-medium text-foreground">{getInitials(user.name)}</span>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-foreground">{user.name}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                                  {user.role === "admin" ? "Administrator" : "User"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge variant={user.isActive ? "default" : "destructive"}>
+                                  {user.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-muted-foreground">
+                                  {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "Never"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-muted-foreground">
+                                  {new Date(user.createdAt).toLocaleDateString()}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-2">
+                                  <Button variant="ghost" size="sm" onClick={() => viewUserDetails(user)}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => sendEmailToUser(user)}>
+                                    <Mail className="h-4 w-4" />
+                                  </Button>
+                                  {canModifyUser(user) && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <span className="sr-only">Open menu</span>
+                                          {actionLoading === user._id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <MoreHorizontal className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {user.role === "user" ? (
+                                          <DropdownMenuItem
+                                            onClick={() => updateUserRole(user._id, "admin")}
+                                            disabled={actionLoading === user._id}
+                                          >
+                                            <Shield className="mr-2 h-4 w-4" />
+                                            Promote to Admin
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem
+                                            onClick={() => updateUserRole(user._id, "user")}
+                                            disabled={actionLoading === user._id}
+                                          >
+                                            <UserCheck className="mr-2 h-4 w-4" />
+                                            Demote to User
+                                          </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            setUserToDelete(user)
+                                            setDeleteDialogOpen(true)
+                                          }}
+                                          disabled={actionLoading === user._id}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Delete User
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToFirstPage}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronsLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPreviousPage}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToLastPage}
+                            disabled={currentPage === totalPages}
+                          >
+                            <ChevronsRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between py-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToFirstPage} disabled={currentPage === 1}>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToPreviousPage} disabled={currentPage === 1}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button variant="outline" size="sm" onClick={goToNextPage} disabled={currentPage === totalPages}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToLastPage} disabled={currentPage === totalPages}>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Delete Confirmation Dialog */}
@@ -780,6 +935,65 @@ function UserManagementContent() {
             )}
             <DialogFooter>
               <Button onClick={() => setViewUserDialog(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Email Dialog */}
+        <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Mail className="h-5 w-5" />
+                <span>Send Email</span>
+              </DialogTitle>
+              <DialogDescription>
+                Send an email to {selectedUserForEmail?.name} ({selectedUserForEmail?.email})
+              </DialogDescription>
+            </DialogHeader>
+            {selectedUserForEmail && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Subject</label>
+                  <Input
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="Enter email subject"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Message</label>
+                  <Textarea
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    placeholder="Enter your message"
+                    className="mt-1 resize-none"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendEmail}
+                disabled={emailSending || !emailSubject.trim() || !emailBody.trim()}
+              >
+                {emailSending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Email
+                  </>
+                )}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
