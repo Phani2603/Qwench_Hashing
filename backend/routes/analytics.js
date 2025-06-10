@@ -346,54 +346,131 @@ router.post('/export/email', authenticate, async (req, res) => {
         success: false,
         message: "No QR codes found for analytics export"
       })
-    }
-
-    const qrCodeIds = userQRCodes.map(qr => qr._id)
+    }    const qrCodeIds = userQRCodes.map(qr => qr._id)
     const scans = await Scan.find({
       qrCode: { $in: qrCodeIds }
     }).populate('qrCode', 'websiteTitle websiteURL').sort({ timestamp: -1 })
     
-    // Generate email content with summary
+    // Generate analytics data for email
+    const totalScans = scans.length
     const recentScans = scans.slice(0, 10)
     
-    const emailContent = {
+    // Get device breakdown stats
+    const deviceStats = await Scan.aggregate([
+      {
+        $match: { qrCode: { $in: qrCodeIds } }
+      },
+      {
+        $group: {
+          _id: null,
+          android: { $sum: { $cond: ["$deviceInfo.isAndroid", 1, 0] } },
+          ios: { $sum: { $cond: ["$deviceInfo.isIOS", 1, 0] } },
+          desktop: { $sum: { $cond: ["$deviceInfo.isDesktop", 1, 0] } },
+          mobile: { $sum: { $cond: ["$deviceInfo.isMobile", 1, 0] } },
+          tablet: { $sum: { $cond: ["$deviceInfo.isTablet", 1, 0] } },
+          total: { $sum: 1 }
+        }
+      }
+    ])
+
+    const stats = deviceStats[0] || { android: 0, ios: 0, desktop: 0, mobile: 0, tablet: 0, total: 0 }
+    
+    // Send email using the enhanced email service
+    const { sendEmail } = require('../utils/emailService')
+      const emailContent = {
       to: email,
       subject: 'QR Code Analytics Report',
+      text: `
+Hi there,
+
+Please find your QR Code Analytics Report below:
+
+Total QR Codes: ${userQRCodes.length}
+Total Scans: ${totalScans}
+
+Device Breakdown:
+- Android: ${stats.android} scans
+- iOS: ${stats.ios} scans  
+- Desktop: ${stats.desktop} scans
+- Mobile: ${stats.mobile} scans
+- Tablet: ${stats.tablet} scans
+
+Recent Activity:
+${recentScans.slice(0, 5).map(scan => 
+  `- ${new Date(scan.timestamp).toLocaleDateString()}: ${scan.deviceInfo?.deviceType || 'Unknown'} device`
+).join('\n')}
+
+For detailed analytics, please visit your dashboard.
+
+Best regards,
+Quench RBAC Team
+      `,
       html: `
-        <h2>Your QR Code Analytics Report</h2>
-        <div style="background-color: #f9f9f9; padding: 15px; margin: 20px 0;">
-          <h3>Summary</h3>
-          <p>Total QR Codes: ${userQRCodes.length}</p>
-          <p>Total Scans: ${scans.length}</p>
-          <p>Report Generated: ${new Date().toLocaleDateString()}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin: 0;">QR Code Analytics Report</h2>
+            <p style="color: #666; margin: 5px 0 0 0;">Generated on ${new Date().toLocaleDateString()}</p>
+          </div>
+          
+          <div style="background-color: white; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #333; margin-top: 0;">Summary</h3>
+            <ul style="list-style: none; padding: 0;">
+              <li style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Total QR Codes:</strong> ${userQRCodes.length}</li>
+              <li style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Total Scans:</strong> ${totalScans}</li>
+            </ul>
+          </div>
+
+          <div style="background-color: white; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #333; margin-top: 0;">Device Breakdown</h3>
+            <ul style="list-style: none; padding: 0;">
+              <li style="padding: 5px 0;"><strong>Android:</strong> ${stats.android} scans</li>
+              <li style="padding: 5px 0;"><strong>iOS:</strong> ${stats.ios} scans</li>
+              <li style="padding: 5px 0;"><strong>Desktop:</strong> ${stats.desktop} scans</li>
+              <li style="padding: 5px 0;"><strong>Mobile:</strong> ${stats.mobile} scans</li>
+              <li style="padding: 5px 0;"><strong>Tablet:</strong> ${stats.tablet} scans</li>
+            </ul>
+          </div>
+
+          <div style="background-color: white; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px;">
+            <h3 style="color: #333; margin-top: 0;">Recent Activity</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f8f9fa;">
+                  <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date</th>
+                  <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentScans.slice(0, 10).map(scan => `
+                  <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${new Date(scan.timestamp).toLocaleDateString()}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${scan.deviceInfo?.deviceType || 'Unknown'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <p style="margin-top: 20px;">For detailed analytics, please visit your dashboard.</p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+            <p style="color: #666; font-size: 12px; margin: 0;">
+              This report was generated by the Quench RBAC system.
+            </p>
+          </div>
         </div>
-        <h3>Recent Scans (Last 10)</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr style="background-color: #f2f2f2;">
-            <th style="border: 1px solid #ddd; padding: 8px;">Date</th>
-            <th style="border: 1px solid #ddd; padding: 8px;">QR Code</th>
-            <th style="border: 1px solid #ddd; padding: 8px;">Device</th>
-          </tr>
-          ${recentScans.map(scan => `
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 8px;">${new Date(scan.timestamp).toLocaleDateString()}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${scan.qrCode?.websiteTitle || 'Unknown'}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${scan.deviceInfo?.deviceType || 'Unknown'}</td>
-            </tr>
-          `).join('')}
-        </table>
-        <p style="margin-top: 20px;">For detailed analytics, please visit your dashboard.</p>
       `
     }
     
-    // In a real implementation, you would send the email using a service like SendGrid, Nodemailer, etc.
-    // For now, we'll just simulate the email sending
-    console.log('Email would be sent to:', email)
-    console.log('Email content:', emailContent)
+    const result = await sendEmail(emailContent)
     
     res.status(200).json({
       success: true,
-      message: `Analytics report has been sent to ${email}`
+      message: `Analytics report has been sent to ${email}`,
+      emailResult: {
+        messageId: result.messageId,
+        provider: result.provider,
+        timestamp: result.timestamp
+      }
     })
     
   } catch (error) {

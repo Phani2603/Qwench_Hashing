@@ -230,4 +230,82 @@ router.get("/dashboard", authenticate, isAdmin, async (req, res) => {
   }
 })
 
+// Send email to user (admin only)
+router.post("/users/:userId/email", authenticate, isAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params
+    const { subject, message } = req.body
+
+    // Validate required fields
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and message are required",
+      })
+    }
+
+    if (subject.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject cannot exceed 200 characters",
+      })
+    }
+
+    if (message.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        message: "Message cannot exceed 5000 characters",
+      })
+    }
+
+    // Find the user
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Get sender information
+    const sender = {
+      name: req.user.name,
+      email: req.user.email,
+      _id: req.user._id
+    }
+
+    // Send email using email service
+    const { sendUserNotification } = require("../utils/emailService")
+    
+    const result = await sendUserNotification({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+      },
+      subject,
+      message,
+      sender,
+      req
+    })
+
+    res.json({
+      success: true,
+      message: `Email sent successfully to ${user.name}`,
+      emailResult: {
+        messageId: result.messageId,
+        timestamp: result.timestamp
+      }
+    })
+
+  } catch (error) {
+    console.error("Error sending email:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to send email",
+      error: error.message,
+    })
+  }
+})
+
 module.exports = router

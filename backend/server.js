@@ -221,7 +221,7 @@ app.use("*", (req, res) => {
 // Database connection
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("✅ Connected to MongoDB Atlas")
     console.log("📍 Database:", mongoose.connection.name)
     
@@ -233,6 +233,21 @@ mongoose
     } catch (error) {
       console.error("❌ GridFS initialization failed:", error.message);
       console.error("❌ This will affect QR code image storage functionality");
+    }
+
+    // Initialize Email Service
+    try {
+      const { verifyEmailConnection } = require('./utils/emailService');
+      const emailConnected = await verifyEmailConnection();
+      if (emailConnected) {
+        console.log("✅ Email service initialized successfully (Gmail)");
+      } else {
+        console.log("⚠️  Email service running in simulation mode");
+        console.log("   Add Gmail credentials to enable real email sending");
+      }
+    } catch (error) {
+      console.error("❌ Email service initialization failed:", error.message);
+      console.error("❌ Emails will use simulation mode only");
     }
 
     // Start server
