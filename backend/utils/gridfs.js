@@ -35,7 +35,7 @@ const generateAndStoreQRCode = async (codeId, qrData) => {
     // Create a unique filename
     const filename = `${codeId}.png`;
     
-    console.log(`Generating QR code for storage: ${filename}`);
+    console.log(`📄 Generating QR code for storage: ${filename}`);
     
     // Create writable stream to GridFS
     const uploadStream = bucket.openUploadStream(filename, {
@@ -44,31 +44,33 @@ const generateAndStoreQRCode = async (codeId, qrData) => {
         codeId,
         createdAt: new Date(),
         type: 'qr-code'
-      }
-    });
-    
+      }    });
+
     // Convert buffer write to promise
     return new Promise((resolve, reject) => {
       uploadStream.on('error', (error) => {
-        console.error('Error storing QR code in MongoDB:', error);
-        reject(error);
+        console.error('❌ GridFS upload error:', error);
+        reject(new Error(`Failed to store QR code: ${error.message}`));
       });
-        uploadStream.on('finish', (file) => {
-        console.log(`QR code stored in MongoDB with ID: ${file._id}`);
-        // Return the file ID and a reference path that can be used in API endpoints
+      
+      uploadStream.on('finish', () => {
+        // FIX: Use uploadStream.id instead of undefined file._id
+        const fileId = uploadStream.id;
+        console.log(`✅ QR code stored successfully in GridFS with ID: ${fileId}`);
+        
         resolve({
-          fileId: file._id,
+          fileId: fileId,
           imageURL: `/qrcodes/image/${codeId}`
         });
       });
       
-      // Write buffer to stream
-      uploadStream.write(qrBuffer);
-      uploadStream.end();
+      // Write the buffer to GridFS
+      uploadStream.end(qrBuffer);
     });
+    
   } catch (error) {
-    console.error('Error generating QR code:', error);
-    throw error;
+    console.error('❌ Error in QR code generation:', error);
+    throw new Error(`QR code generation failed: ${error.message}`);
   }
 };
 
