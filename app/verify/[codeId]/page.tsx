@@ -169,26 +169,33 @@ export default function VerifyQRCode() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-950 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_600px_at_50%_200px,#1e293b,transparent)] opacity-40"></div>
-      <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]"></div>
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Background Pattern with Animation */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_300px,#0f0f23,transparent)] opacity-30 animate-pulse"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"></div>
       
-      <div className="relative flex min-h-screen items-center justify-center p-3 sm:p-6">
-        <Card className="w-full max-w-[95%] sm:max-w-lg lg:max-w-xl bg-black/50 dark:bg-black/70 backdrop-blur-xl border border-slate-700/50 shadow-2xl shadow-black/50 mx-auto">
-          <CardHeader className="text-center pb-4 sm:pb-6 pt-6 sm:pt-8 px-4 sm:px-6 bg-gradient-to-br from-slate-900/20 to-black/20 rounded-t-lg">
+      {/* Floating particles animation */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-500/20 rounded-full animate-float-slow"></div>
+        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-purple-500/30 rounded-full animate-float-delayed"></div>
+        <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-blue-400/25 rounded-full animate-float-medium"></div>
+      </div>
+      
+      <div className="relative flex min-h-screen items-center justify-center p-2 sm:p-6">
+        <Card className="w-full max-w-[98%] sm:max-w-lg lg:max-w-xl bg-black/95 backdrop-blur-2xl border border-gray-800/50 shadow-2xl shadow-black/80 mx-auto transition-all duration-500 ease-out transform hover:scale-[1.02] animate-fade-in">
+          <CardHeader className="text-center pb-4 sm:pb-6 pt-6 sm:pt-8 px-4 sm:px-6 bg-gradient-to-br from-black/40 to-black/60 rounded-t-lg">
             <div className="flex justify-center mb-3 sm:mb-4">
-              <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-500/25">
+              <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-500/25 transition-transform duration-300 hover:scale-110">
                 <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M5 12H4m6 0H9m3 0h1m-4 0h1m0-3V9m0 0h1m-1 0H9m3 0h1m0 3h4" />
                 </svg>
               </div>
             </div>
-            <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent mb-2">
+            <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent mb-2 transition-all duration-500">
               QR Code Verification
             </CardTitle>
             <CardDescription className="text-gray-300 text-xs sm:text-sm px-2 sm:px-0">
-              Processing code: <span className="font-mono font-semibold text-blue-400 break-all text-xs sm:text-sm">{codeId}</span>
+              Processing code: <span className="font-mono font-semibold text-blue-400 break-words overflow-wrap-anywhere text-xs sm:text-sm">{codeId}</span>
             </CardDescription>
           </CardHeader>
         
@@ -231,54 +238,57 @@ export default function VerifyQRCode() {
               </div>
 
               {/* QR Code Details */}
-              <div className="bg-gradient-to-br from-slate-800/50 to-black/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700/50 backdrop-blur-sm">
+              <div className="bg-gradient-to-br from-black/80 to-black/60 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-800/50 backdrop-blur-sm transition-all duration-300 hover:border-gray-700/50">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-200 mb-3 sm:mb-4 flex items-center">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
                   QR Code Details
                 </h3>
                 <div className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 gap-3 sm:gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                      <span className="text-sm font-medium text-gray-400 min-w-[100px]">Code ID:</span>
-                      <span className="font-mono text-sm bg-slate-800 px-3 py-1 rounded-lg text-gray-200 break-all">
+                      <span className="text-sm font-medium text-gray-400 min-w-[100px] flex-shrink-0">Code ID:</span>
+                      <div className="font-mono text-sm bg-black/60 px-3 py-2 rounded-lg text-gray-200 break-words overflow-wrap-anywhere max-w-full border border-gray-800/30">
                         {verification.qrCode?.codeId}
-                      </span>
+                      </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                      <span className="text-sm font-medium text-gray-400 min-w-[100px]">Assigned To:</span>
-                      <span className="text-gray-200 font-medium">
+                      <span className="text-sm font-medium text-gray-400 min-w-[100px] flex-shrink-0">Assigned To:</span>
+                      <span className="text-gray-200 font-medium break-words">
                         {verification.qrCode?.assignedTo.name}
                       </span>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                      <span className="text-sm font-medium text-gray-400 min-w-[100px]">Category:</span>
+                      <span className="text-sm font-medium text-gray-400 min-w-[100px] flex-shrink-0">Category:</span>
                       <div className="flex items-center space-x-2">
                         <div
-                          className="w-4 h-4 rounded-full border-2 border-gray-600 shadow-sm"
+                          className="w-4 h-4 rounded-full border-2 border-gray-600 shadow-sm animate-pulse"
                           style={{ backgroundColor: verification.qrCode?.category.color }}
                         />
-                        <span className="text-gray-200 font-medium">
+                        <span className="text-gray-200 font-medium break-words">
                           {verification.qrCode?.category.name}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                      <span className="text-sm font-medium text-gray-400 min-w-[100px]">Website:</span>
-                      <div className="flex items-center space-x-2 bg-blue-900/30 px-3 py-2 rounded-lg">
-                        <ExternalLink className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                        <span className="text-blue-400 text-sm break-all">
+                    <div className="flex flex-col space-y-2">
+                      <span className="text-sm font-medium text-gray-400">Website:</span>
+                      <div className="bg-black/60 px-3 py-3 rounded-lg border border-blue-900/30 overflow-hidden">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <ExternalLink className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                          <span className="text-blue-400 text-xs font-medium">Target URL</span>
+                        </div>
+                        <div className="text-blue-400 text-sm break-words overflow-wrap-anywhere leading-relaxed">
                           {verification.qrCode?.websiteURL}
-                        </span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                      <span className="text-sm font-medium text-gray-400 min-w-[100px]">Total Scans:</span>
+                      <span className="text-sm font-medium text-gray-400 min-w-[100px] flex-shrink-0">Total Scans:</span>
                       <div className="flex items-center space-x-2">
-                        <div className="bg-green-900/40 px-3 py-1 rounded-full">
+                        <div className="bg-green-900/40 px-3 py-1 rounded-full border border-green-800/30">
                           <span className="text-green-400 font-bold text-lg">
                             {verification.qrCode?.scanCount}
                           </span>
@@ -344,7 +354,7 @@ export default function VerifyQRCode() {
               )}
 
               {/* Footer Info */}
-              <div className="text-center pt-4 border-t border-slate-700">
+              <div className="text-center pt-4 border-t border-gray-800">
                 <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span>{scanLogged ? "Scan logged" : "Verification"}</span>
@@ -380,7 +390,7 @@ export default function VerifyQRCode() {
                 </AlertDescription>
               </Alert>
 
-              <div className="text-center pt-4 border-t border-slate-700">
+              <div className="text-center pt-4 border-t border-gray-800">
                 <p className="text-xs text-gray-400">
                   If you believe this is an error, please contact support
                 </p>

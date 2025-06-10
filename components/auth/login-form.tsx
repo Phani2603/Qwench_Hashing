@@ -39,28 +39,44 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+    <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden p-4">
+      {/* Background Pattern with Animation */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_300px,#0f0f23,transparent)] opacity-30 animate-pulse"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"></div>
+      
+      {/* Floating particles animation */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-500/20 rounded-full animate-float-slow"></div>
+        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-purple-500/30 rounded-full animate-float-delayed"></div>
+        <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-blue-400/25 rounded-full animate-float-medium"></div>
+      </div>
+
+      <Card className="w-full max-w-md shadow-2xl border border-gray-800/50 bg-black/95 backdrop-blur-2xl animate-fade-in relative z-10">
+        <CardHeader className="space-y-1 text-center pb-6">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/25 transition-transform duration-300 hover:scale-110">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
             Welcome Back
           </CardTitle>
-          <CardDescription className="text-slate-600">Sign in to your account to continue</CardDescription>
+          <CardDescription className="text-gray-300">Sign in to your account to continue</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50">
-                <AlertDescription>{error}</AlertDescription>
+              <Alert variant="destructive" className="border-red-800/50 bg-red-900/30 rounded-xl backdrop-blur-sm animate-slide-up">
+                <AlertDescription className="text-red-300">{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-300">
                 Email Address
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="email"
                   type="email"
@@ -68,17 +84,17 @@ export default function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="pl-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
+                  className="pl-10 bg-black/60 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-all-smooth"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-300">
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -86,19 +102,23 @@ export default function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pl-10 pr-10 border-slate-200 focus:border-slate-400 focus:ring-slate-400"
+                  className="pl-10 pr-10 bg-black/60 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/20 transition-all-smooth"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-200 transition-colors-smooth"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 mt-6" 
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -110,11 +130,11 @@ export default function LoginForm() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-slate-600">
+          <div className="mt-6 text-center text-sm text-gray-400">
             Don't have an account?{" "}
             <Link
               href="/signup"
-              className="font-medium text-slate-900 hover:text-slate-700 underline underline-offset-4"
+              className="font-medium text-blue-400 hover:text-blue-300 underline underline-offset-4 transition-colors-smooth"
             >
               Sign up
             </Link>
