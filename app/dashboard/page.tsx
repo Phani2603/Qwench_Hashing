@@ -6,6 +6,7 @@ import RouteGuard from "@/components/auth/route-guard"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import QRCodeList from "@/components/user/qr-code-list"
 import WebsiteURLManager from "@/components/user/website-url-manager"
+import QRCodeAnalytics from "@/components/user/qr-code-analytics"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -230,6 +231,9 @@ function UserDashboardContent() {
 
           {/* QR Code Management Section */}
           <QRCodeList />
+          
+          {/* QR Code Analytics Section */}
+          <QRCodeAnalytics token={token} />
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-3 bg-card">

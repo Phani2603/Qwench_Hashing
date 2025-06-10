@@ -1,0 +1,10 @@
+[build]
+command = "npm install"
+workdir = "/app/backend"
+
+[deploy]
+startCommand = "npm start"
+workdir = "/app/backend"
+
+[environments.production.variables]
+NODE_ENV = "production"

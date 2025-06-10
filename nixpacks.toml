@@ -1,0 +1,10 @@
+[variables]
+NODE_ENV = "production"
+
+[phases.build]
+workdir = "/app/backend"
+cmds = ["npm install"]
+
+[phases.start]
+workdir = "/app/backend"
+cmd = "npm start"

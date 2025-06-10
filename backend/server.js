@@ -192,6 +192,14 @@ try {
   console.error("❌ Error loading admin analytics routes:", error.message)
 }
 
+// User analytics routes
+try {
+  app.use("/api/analytics", require("./routes/analytics"))
+  console.log("✅ User analytics routes loaded")
+} catch (error) {
+  console.error("❌ Error loading user analytics routes:", error.message)
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack)
