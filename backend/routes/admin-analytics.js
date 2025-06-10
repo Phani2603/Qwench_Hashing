@@ -140,34 +140,51 @@ router.get("/qrcodes", authenticate, isAdmin, async (req, res) => {
     const totalScans = await Scan.countDocuments()
     const averageScansPerCode = totalQRCodes > 0 ? Math.round(totalScans / totalQRCodes) : 0
 
-    // Get device breakdown
-    const deviceBreakdown = await Scan.aggregate([
+    // Get device breakdown using efficient boolean flags
+    const deviceStats = await Scan.aggregate([
       {
         $group: {
-          _id: "$deviceInfo.device",
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          device: "$_id",
-          count: 1,
-          percentage: {
-            $multiply: [{ $divide: ["$count", totalScans] }, 100],
-          },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
+          _id: null,
+          android: { $sum: { $cond: ["$deviceInfo.isAndroid", 1, 0] } },
+          ios: { $sum: { $cond: ["$deviceInfo.isIOS", 1, 0] } },
+          desktop: { $sum: { $cond: ["$deviceInfo.isDesktop", 1, 0] } },
+          mobile: { $sum: { $cond: ["$deviceInfo.isMobile", 1, 0] } },
+          tablet: { $sum: { $cond: ["$deviceInfo.isTablet", 1, 0] } },
+          total: { $sum: 1 }
+        }
+      }
     ])
 
-    // Format device breakdown
-    const formattedDeviceBreakdown = deviceBreakdown.map((item) => ({
-      device: item.device || "Unknown",
-      count: item.count,
-      percentage: Math.round(item.percentage),
-    }))
+    const stats = deviceStats[0] || { android: 0, ios: 0, desktop: 0, mobile: 0, tablet: 0, total: 0 }
+
+    // Format device breakdown with consistent categories
+    const formattedDeviceBreakdown = [
+      {
+        device: "Android",
+        count: stats.android,
+        percentage: stats.total > 0 ? Math.round((stats.android / stats.total) * 100) : 0,
+      },
+      {
+        device: "iOS", 
+        count: stats.ios,
+        percentage: stats.total > 0 ? Math.round((stats.ios / stats.total) * 100) : 0,
+      },
+      {
+        device: "Desktop",
+        count: stats.desktop,
+        percentage: stats.total > 0 ? Math.round((stats.desktop / stats.total) * 100) : 0,
+      },
+      {
+        device: "Mobile",
+        count: stats.mobile,
+        percentage: stats.total > 0 ? Math.round((stats.mobile / stats.total) * 100) : 0,
+      },
+      {
+        device: "Tablet",
+        count: stats.tablet,
+        percentage: stats.total > 0 ? Math.round((stats.tablet / stats.total) * 100) : 0,
+      }
+    ].sort((a, b) => b.count - a.count) // Sort by count descending
 
     // Get scan timeline (last 6 months)
     const sixMonthsAgo = new Date()

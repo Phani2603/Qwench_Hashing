@@ -93,25 +93,56 @@ router.post("/verify/:codeId/scan", async (req, res) => {
     const userAgent = req.headers["user-agent"] || "Unknown"
     const ipAddress = req.ip || req.connection.remoteAddress || "Unknown"
 
-    // Simple device detection
-    let deviceType = "Desktop"
-    if (/Mobile|Android|iPhone|iPad/.test(userAgent)) {
-      deviceType = "Mobile"
-    } else if (/Tablet|iPad/.test(userAgent)) {
-      deviceType = "Tablet"
+    // Enhanced device detection using ua-parser-js
+    const UAParser = require('ua-parser-js')
+    const parser = new UAParser(userAgent)
+    const result = parser.getResult()
+
+    // Extract device information
+    const browser = result.browser.name || "Unknown"
+    const browserVersion = result.browser.version || "Unknown"
+    const os = result.os.name || "Unknown" 
+    const osVersion = result.os.version || "Unknown"
+    const device = result.device.model || result.device.vendor || "Unknown"
+    
+    // Determine device type with enhanced logic
+    let deviceType = "unknown"
+    if (result.device.type === "mobile" || /mobile/i.test(userAgent)) {
+      deviceType = "mobile"
+    } else if (result.device.type === "tablet" || /tablet|ipad/i.test(userAgent)) {
+      deviceType = "tablet"  
+    } else if (!result.device.type || result.device.type === "desktop") {
+      deviceType = "desktop"
     }
+
+    // Boolean flags for efficient analytics
+    const isAndroid = /android/i.test(userAgent)
+    const isIOS = /iphone|ipad|ipod/i.test(userAgent)
+    const isDesktop = !(/mobile|android|iphone|ipad|ipod|tablet/i.test(userAgent))
+    const isMobile = /mobile|android|iphone|ipod/i.test(userAgent) && !/tablet|ipad/i.test(userAgent)
+    const isTablet = /tablet|ipad/i.test(userAgent)
 
     console.log(`Logging scan for QR code: ${codeId}`) // Debug log
 
-    // Log the scan
+    // Log the scan with enhanced device info
     const scan = new Scan({
       qrCode: qrCode._id,
       codeId: codeId,
       ipAddress: ipAddress,
       userAgent: userAgent,
       deviceInfo: {
-        device: deviceType,
-        userAgent: userAgent,
+        browser,
+        browserVersion,
+        os,
+        osVersion,
+        device,
+        deviceType,
+        deviceModel: result.device.model || "Unknown",
+        isAndroid,
+        isIOS,
+        isDesktop,
+        isMobile,
+        isTablet,
       },
       timestamp: new Date(),
     })
@@ -583,8 +614,8 @@ router.get("/analytics", authenticate, isAdmin, async (req, res) => {
       },
     ])
 
-    // Get device analytics
-    const deviceAnalytics = await Scan.aggregate([
+    // Get device analytics using efficient boolean flags
+    const deviceStats = await Scan.aggregate([
       {
         $match: {
           timestamp: { $gte: startDate },
@@ -592,14 +623,42 @@ router.get("/analytics", authenticate, isAdmin, async (req, res) => {
       },
       {
         $group: {
-          _id: "$deviceInfo.device",
-          count: { $sum: 1 },
-        },
+          _id: null,
+          android: { $sum: { $cond: ["$deviceInfo.isAndroid", 1, 0] } },
+          ios: { $sum: { $cond: ["$deviceInfo.isIOS", 1, 0] } },
+          desktop: { $sum: { $cond: ["$deviceInfo.isDesktop", 1, 0] } },
+          mobile: { $sum: { $cond: ["$deviceInfo.isMobile", 1, 0] } },
+          tablet: { $sum: { $cond: ["$deviceInfo.isTablet", 1, 0] } },
+          total: { $sum: 1 }
+        }
+      }
+    ])
+
+    const stats = deviceStats[0] || { android: 0, ios: 0, desktop: 0, mobile: 0, tablet: 0, total: 0 }
+
+    // Format device analytics with consistent categories
+    const deviceAnalytics = [
+      {
+        _id: "Android",
+        count: stats.android,
       },
       {
-        $sort: { count: -1 },
+        _id: "iOS", 
+        count: stats.ios,
       },
-    ])
+      {
+        _id: "Desktop",
+        count: stats.desktop,
+      },
+      {
+        _id: "Mobile",
+        count: stats.mobile,
+      },
+      {
+        _id: "Tablet",
+        count: stats.tablet,
+      }
+    ].filter(item => item.count > 0).sort((a, b) => b.count - a.count) // Filter out zero counts and sort
 
     res.json({
       success: true,

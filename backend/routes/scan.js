@@ -2,34 +2,33 @@ const express = require("express")
 const router = express.Router()
 const QRCode = require("../models/QRCode")
 const Scan = require("../models/Scan")
+const UAParser = require('ua-parser-js')
 
-// Helper function to parse user agent
+// Enhanced device info parsing using ua-parser-js
 const parseUserAgent = (userAgent) => {
-  const browser = userAgent.includes("Chrome")
-    ? "Chrome"
-    : userAgent.includes("Firefox")
-      ? "Firefox"
-      : userAgent.includes("Safari")
-        ? "Safari"
-        : userAgent.includes("Edge")
-          ? "Edge"
-          : "Unknown"
-
-  const os = userAgent.includes("Windows")
-    ? "Windows"
-    : userAgent.includes("Mac")
-      ? "macOS"
-      : userAgent.includes("Linux")
-        ? "Linux"
-        : userAgent.includes("Android")
-          ? "Android"
-          : userAgent.includes("iOS")
-            ? "iOS"
-            : "Unknown"
-
-  const device = userAgent.includes("Mobile") ? "Mobile" : userAgent.includes("Tablet") ? "Tablet" : "Desktop"
-
-  return { browser, os, device }
+  const parser = new UAParser(userAgent)
+  const result = parser.getResult()
+  
+  // Create enhanced device info
+  const deviceInfo = {
+    // Basic info
+    browser: result.browser.name || 'Unknown',
+    browserVersion: result.browser.version || 'Unknown',
+    os: result.os.name || 'Unknown',
+    osVersion: result.os.version || 'Unknown',
+    device: result.device.model || 'Unknown',
+    deviceType: result.device.type || 'unknown',
+    deviceModel: result.device.model || 'Unknown',
+    
+    // Boolean flags for quick analytics
+    isAndroid: /android/i.test(userAgent),
+    isIOS: /iphone|ipad|ipod/i.test(userAgent),
+    isDesktop: !(/mobile|android|iphone|ipad|ipod|tablet/i.test(userAgent)),
+    isMobile: /mobile|android|iphone|ipod/i.test(userAgent),
+    isTablet: /ipad|tablet/i.test(userAgent),
+  }
+  
+  return deviceInfo
 }
 
 // Public scan route - redirects and logs the scan

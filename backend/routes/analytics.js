@@ -27,53 +27,35 @@ router.get("/devices", authenticate, async (req, res) => {
           total: 0
         }
       })
-    }
+    }    const qrCodeIds = userQRCodes.map(qr => qr._id)
 
-    const qrCodeIds = userQRCodes.map(qr => qr._id)
-
-    // Aggregate scan data to count by device type
-    const scans = await Scan.find({ qrCode: { $in: qrCodeIds } })
-
-    // Process scans to count device types
-    let android = 0
-    let ios = 0 
-    let desktop = 0
-
-    scans.forEach(scan => {
-      // Check device info
-      if (scan.deviceInfo && scan.deviceInfo.os) {
-        if (scan.deviceInfo.os.toLowerCase() === 'android') {
-          android++
-        } else if (scan.deviceInfo.os.toLowerCase() === 'ios') {
-          ios++
-        } else if (scan.deviceInfo.device && scan.deviceInfo.device.toLowerCase() === 'desktop') {
-          desktop++
-        }
-        // Additional check based on userAgent if deviceInfo doesn't have enough information
-        else if (scan.userAgent) {
-          const userAgent = scan.userAgent.toLowerCase()
-          if (userAgent.includes('android')) {
-            android++
-          } else if (userAgent.includes('iphone') || userAgent.includes('ipad') || userAgent.includes('ipod')) {
-            ios++
-          } else if (!userAgent.includes('mobile')) {
-            desktop++
-          }
+    // Use efficient aggregation with boolean flags
+    const deviceStats = await Scan.aggregate([
+      {
+        $match: { qrCode: { $in: qrCodeIds } }
+      },
+      {
+        $group: {
+          _id: null,
+          android: { $sum: { $cond: ["$deviceInfo.isAndroid", 1, 0] } },
+          ios: { $sum: { $cond: ["$deviceInfo.isIOS", 1, 0] } },
+          desktop: { $sum: { $cond: ["$deviceInfo.isDesktop", 1, 0] } },
+          total: { $sum: 1 }
         }
       }
-    })
+    ])
 
-    // Calculate total and percentages
-    const total = android + ios + desktop
+    // Handle empty result
+    const stats = deviceStats[0] || { android: 0, ios: 0, desktop: 0, total: 0 }
     
     const deviceAnalytics = {
-      android,
-      ios,
-      desktop,
-      androidPercentage: total > 0 ? Math.round((android / total) * 100) : 0,
-      iosPercentage: total > 0 ? Math.round((ios / total) * 100) : 0,
-      desktopPercentage: total > 0 ? Math.round((desktop / total) * 100) : 0,
-      total
+      android: stats.android,
+      ios: stats.ios,
+      desktop: stats.desktop,
+      androidPercentage: stats.total > 0 ? Math.round((stats.android / stats.total) * 100) : 0,
+      iosPercentage: stats.total > 0 ? Math.round((stats.ios / stats.total) * 100) : 0,
+      desktopPercentage: stats.total > 0 ? Math.round((stats.desktop / stats.total) * 100) : 0,
+      total: stats.total
     }
 
     res.status(200).json({
@@ -203,9 +185,9 @@ router.get("/activity", authenticate, async (req, res) => {
 })
 
 // CSV Export endpoint
-router.get('/export/csv', auth, async (req, res) => {
+router.get('/export/csv', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id
+    const userId = req.user._id
     
     // Get user's QR codes
     const userQRCodes = await QRCode.find({ assignedTo: userId })
@@ -222,21 +204,23 @@ router.get('/export/csv', auth, async (req, res) => {
     // Get all scans for user's QR codes
     const scans = await Scan.find({
       qrCode: { $in: qrCodeIds }
-    }).populate('qrCode', 'title url').sort({ timestamp: -1 })
+    }).populate('qrCode', 'websiteTitle websiteURL').sort({ timestamp: -1 })
     
     // Generate CSV content
-    let csvContent = "Date,Time,QR Code Title,URL,Device Type,Location\n"
+    let csvContent = "Date,Time,QR Code Title,URL,Device Type,OS,Browser,Device Model\n"
     
     scans.forEach(scan => {
       const date = new Date(scan.timestamp)
       const dateStr = date.toLocaleDateString()
       const timeStr = date.toLocaleTimeString()
-      const title = scan.qrCode?.title || 'Unknown'
-      const url = scan.qrCode?.url || 'Unknown'
-      const deviceType = scan.deviceInfo || 'Unknown'
-      const location = scan.location || 'Unknown'
+      const title = scan.qrCode?.websiteTitle || 'Unknown'
+      const url = scan.qrCode?.websiteURL || 'Unknown'
+      const deviceType = scan.deviceInfo?.deviceType || 'Unknown'
+      const os = scan.deviceInfo?.os || 'Unknown'
+      const browser = scan.deviceInfo?.browser || 'Unknown'
+      const deviceModel = scan.deviceInfo?.deviceModel || 'Unknown'
       
-      csvContent += `"${dateStr}","${timeStr}","${title}","${url}","${deviceType}","${location}"\n`
+      csvContent += `"${dateStr}","${timeStr}","${title}","${url}","${deviceType}","${os}","${browser}","${deviceModel}"\n`
     })
     
     res.setHeader('Content-Type', 'text/csv')
@@ -254,9 +238,9 @@ router.get('/export/csv', auth, async (req, res) => {
 })
 
 // PDF Export endpoint
-router.get('/export/pdf', auth, async (req, res) => {
+router.get('/export/pdf', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id
+    const userId = req.user._id
     
     // Get user's QR codes and analytics data
     const userQRCodes = await QRCode.find({ assignedTo: userId })
@@ -271,7 +255,7 @@ router.get('/export/pdf', auth, async (req, res) => {
     const qrCodeIds = userQRCodes.map(qr => qr._id)
     const scans = await Scan.find({
       qrCode: { $in: qrCodeIds }
-    }).populate('qrCode', 'title url').sort({ timestamp: -1 })
+    }).populate('qrCode', 'websiteTitle websiteURL').sort({ timestamp: -1 })
     
     // Generate simple PDF content (basic HTML that can be converted to PDF)
     let pdfContent = `
@@ -303,6 +287,7 @@ router.get('/export/pdf', auth, async (req, res) => {
           <th>QR Code</th>
           <th>URL</th>
           <th>Device</th>
+          <th>OS</th>
         </tr>
     `
     
@@ -312,9 +297,10 @@ router.get('/export/pdf', auth, async (req, res) => {
         <tr>
           <td>${date.toLocaleDateString()}</td>
           <td>${date.toLocaleTimeString()}</td>
-          <td>${scan.qrCode?.title || 'Unknown'}</td>
-          <td>${scan.qrCode?.url || 'Unknown'}</td>
-          <td>${scan.deviceInfo || 'Unknown'}</td>
+          <td>${scan.qrCode?.websiteTitle || 'Unknown'}</td>
+          <td>${scan.qrCode?.websiteURL || 'Unknown'}</td>
+          <td>${scan.deviceInfo?.deviceType || 'Unknown'}</td>
+          <td>${scan.deviceInfo?.os || 'Unknown'}</td>
         </tr>
       `
     })
@@ -340,9 +326,9 @@ router.get('/export/pdf', auth, async (req, res) => {
 })
 
 // Email Report endpoint
-router.post('/export/email', auth, async (req, res) => {
+router.post('/export/email', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id
+    const userId = req.user._id
     const { email } = req.body
     
     if (!email) {
@@ -365,7 +351,7 @@ router.post('/export/email', auth, async (req, res) => {
     const qrCodeIds = userQRCodes.map(qr => qr._id)
     const scans = await Scan.find({
       qrCode: { $in: qrCodeIds }
-    }).populate('qrCode', 'title url').sort({ timestamp: -1 })
+    }).populate('qrCode', 'websiteTitle websiteURL').sort({ timestamp: -1 })
     
     // Generate email content with summary
     const recentScans = scans.slice(0, 10)
@@ -391,8 +377,8 @@ router.post('/export/email', auth, async (req, res) => {
           ${recentScans.map(scan => `
             <tr>
               <td style="border: 1px solid #ddd; padding: 8px;">${new Date(scan.timestamp).toLocaleDateString()}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${scan.qrCode?.title || 'Unknown'}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${scan.deviceInfo || 'Unknown'}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${scan.qrCode?.websiteTitle || 'Unknown'}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${scan.deviceInfo?.deviceType || 'Unknown'}</td>
             </tr>
           `).join('')}
         </table>

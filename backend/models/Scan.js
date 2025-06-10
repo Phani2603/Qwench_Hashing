@@ -21,6 +21,7 @@ const scanSchema = new mongoose.Schema(
       required: true,
     },
     deviceInfo: {
+      // Basic info (existing)
       browser: {
         type: String,
         default: "Unknown",
@@ -33,7 +34,73 @@ const scanSchema = new mongoose.Schema(
         type: String,
         default: "Unknown",
       },
+      
+      // NEW FIELDS FOR ANALYTICS
+      browserVersion: {
+        type: String,
+        default: "Unknown",
+      },
+      osVersion: {
+        type: String,
+        default: "Unknown",
+      },
+      deviceType: {
+        type: String,
+        enum: ['mobile', 'tablet', 'desktop', 'unknown'],
+        default: 'unknown',
+      },
+      deviceModel: {
+        type: String,
+        default: "Unknown",
+      },
+      
+      // Boolean flags for quick filtering
+      isAndroid: {
+        type: Boolean,
+        default: false,
+      },
+      isIOS: {
+        type: Boolean,
+        default: false,
+      },
+      isDesktop: {
+        type: Boolean,
+        default: false,
+      },
+      isMobile: {
+        type: Boolean,
+        default: false,
+      },
+      isTablet: {
+        type: Boolean,
+        default: false,
+      },
     },
+    
+    // Optional location data for geographic analytics
+    location: {
+      country: {
+        type: String,
+        default: "Unknown",
+      },
+      region: {
+        type: String,
+        default: "Unknown",
+      },
+      city: {
+        type: String,
+        default: "Unknown",
+      },
+      latitude: {
+        type: Number,
+        default: null,
+      },
+      longitude: {
+        type: Number,
+        default: null,
+      },
+    },
+    
     timestamp: {
       type: Date,
       default: Date.now,
@@ -48,5 +115,11 @@ const scanSchema = new mongoose.Schema(
 // Index for efficient queries
 scanSchema.index({ codeId: 1, timestamp: -1 })
 scanSchema.index({ timestamp: -1 })
+
+// Index for efficient analytics queries
+scanSchema.index({ 'deviceInfo.deviceType': 1 })
+scanSchema.index({ 'deviceInfo.isAndroid': 1 })
+scanSchema.index({ 'deviceInfo.isIOS': 1 })
+scanSchema.index({ 'deviceInfo.isDesktop': 1 })
 
 module.exports = mongoose.model("Scan", scanSchema)
