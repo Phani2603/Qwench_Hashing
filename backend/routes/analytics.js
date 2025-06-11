@@ -159,7 +159,7 @@ router.get("/activity", authenticate, async (req, res) => {
       if (timeframe === 'monthly') {
         const [year, month] = date.split('-')
         const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1)
-        displayDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+        displayDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       } else if (timeframe === 'weekly') {
         const [year, week] = date.split('-W')
         displayDate = `Week ${week}, ${year}`
