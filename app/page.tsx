@@ -67,8 +67,8 @@ export default function HomePage() {
               <Shield className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent animate-shimmer">
-            RBAC System
+          <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent rounded-2xl animate-shimmer">
+            QUENCH
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto break-words overflow-wrap-anywhere">
             A comprehensive Role-Based Access Control system with secure authentication, user management, and granular
@@ -139,7 +139,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Link href="/login" className="block">
-                <Button className="w-full bg-gradient-to-r from-white/10 to-white/20 hover:from-white/20 hover:to-white/30 text-white border border-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-105">
+                <Button className="w-full bg-gradient-to-r from-white/10 to-white/20 hover:from-white/20 hover:to-white/30 text-black font-bold border border-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-105">
                   Sign In
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

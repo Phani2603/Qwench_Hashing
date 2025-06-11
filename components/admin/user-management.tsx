@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Users, Search, MoreHorizontal, UserCheck, Shield, Trash2, Loader2, AlertTriangle } from "lucide-react"
+import { Users, Search, MoreHorizontal, UserCheck, Shield, Trash2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 
@@ -47,6 +47,16 @@ export default function UserManagement() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [usersPerPage] = useState(10) // Show 10 users per page
+  
+  // Calculate pagination
+  const indexOfLastUser = currentPage * usersPerPage
+  const indexOfFirstUser = indexOfLastUser - usersPerPage
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser)
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage)
 
   useEffect(() => {
     fetchUsers()
@@ -60,6 +70,7 @@ export default function UserManagement() {
         (user.role?.toLowerCase() || "").includes(searchTerm.toLowerCase()),
     )
     setFilteredUsers(filtered)
+    setCurrentPage(1) // Reset to first page when search changes
   }, [users, searchTerm])
 
   const fetchUsers = async () => {
@@ -210,90 +221,177 @@ export default function UserManagement() {
               {searchTerm ? "No users found matching your search." : "No users found."}
             </div>
           ) : (
-            filteredUsers.map((user) => (
-              <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-foreground">{getInitials(user.name)}</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Joined {new Date(user.createdAt).toLocaleDateString()}
-                      {user.updatedAt !== user.createdAt && (
-                        <span> • Updated {new Date(user.updatedAt).toLocaleDateString()}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                    {user.role === "admin" ? "Administrator" : "User"}
-                  </Badge>
-
-                  {currentUser?.id === user._id && (
-                    <Badge
-                      variant="outline"
-                      className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                    >
-                      You
-                    </Badge>
-                  )}
-
-                  {canModifyUser(user) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          {actionLoading === user._id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <MoreHorizontal className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-
-                        {user.role === "user" ? (
-                          <DropdownMenuItem
-                            onClick={() => updateUserRole(user._id, "admin")}
-                            disabled={actionLoading === user._id}
-                          >
-                            <Shield className="mr-2 h-4 w-4" />
-                            Promote to Admin
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            onClick={() => updateUserRole(user._id, "user")}
-                            disabled={actionLoading === user._id}
-                          >
-                            <UserCheck className="mr-2 h-4 w-4" />
-                            Demote to User
-                          </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setUserToDelete(user)
-                            setDeleteDialogOpen(true)
-                          }}
-                          disabled={actionLoading === user._id}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
+            <>
+              {/* User Count and Pagination Info */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                <p>
+                  Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of{" "}
+                  {filteredUsers.length} users
+                </p>
+                {totalPages > 1 && (
+                  <p>
+                    Page {currentPage} of {totalPages}
+                  </p>
+                )}
               </div>
-            ))
+
+              {/* Users Display */}
+              {currentUsers.map((user) => (
+                <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-foreground">{getInitials(user.name)}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Joined {new Date(user.createdAt).toLocaleDateString()}
+                        {user.updatedAt !== user.createdAt && (
+                          <span> • Updated {new Date(user.updatedAt).toLocaleDateString()}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                      {user.role === "admin" ? "Administrator" : "User"}
+                    </Badge>
+
+                    {currentUser?.id === user._id && (
+                      <Badge
+                        variant="outline"
+                        className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                      >
+                        You
+                      </Badge>
+                    )}
+
+                    {canModifyUser(user) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            {actionLoading === user._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+
+                          {user.role === "user" ? (
+                            <DropdownMenuItem
+                              onClick={() => updateUserRole(user._id, "admin")}
+                              disabled={actionLoading === user._id}
+                            >
+                              <Shield className="mr-2 h-4 w-4" />
+                              Promote to Admin
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => updateUserRole(user._id, "user")}
+                              disabled={actionLoading === user._id}
+                            >
+                              <UserCheck className="mr-2 h-4 w-4" />
+                              Demote to User
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setUserToDelete(user)
+                              setDeleteDialogOpen(true)
+                            }}
+                            disabled={actionLoading === user._id}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-2 mt-6 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Page Numbers */}
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={currentPage === pageNumber ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNumber)}
+                          className="h-8 w-8 p-0"
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
