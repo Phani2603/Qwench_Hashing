@@ -542,29 +542,59 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
           <div className="flex items-center justify-center py-8 h-[250px]">
             <Loader2 className="h-8 w-8 animate-spin mr-3 text-teal-600" />
             <span className="text-muted-foreground">Loading scan activity...</span>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-8 h-[250px]">
-            <AlertCircle className="h-12 w-12 text-destructive/50 mb-2" />
-            <p className="text-destructive font-medium text-center">{error}</p>
-            {debugInfo && (
-              <details className="mt-3 text-xs text-muted-foreground">
-                <summary className="cursor-pointer">Debug Info</summary>
-                <pre className="mt-1 bg-muted p-2 rounded text-[10px]">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </details>
-            )}
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-3 text-xs text-muted-foreground hover:text-primary underline"
-            >
-              Try refreshing the page
-            </button>
           </div>        ) : error ? (
           <ScanActivityHeatMap scanData={[]} timeframe={timeframe} errorMessage={error} />
         ) : (
           <ScanActivityHeatMap scanData={scanActivityData} timeframe={timeframe} />
+        )}
+        
+        {/* Debug Panel - only visible during development or for admins */}
+        {debugInfo && error && (
+          <div className="mt-6 border border-border rounded-lg p-3 bg-muted/20 text-xs">
+            <details className="text-muted-foreground">
+              <summary className="cursor-pointer flex items-center font-medium">
+                <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded mr-2 font-mono">DEBUG</span>
+                <span>Diagnostic Information</span>
+              </summary>
+              <div className="mt-2 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-card p-2 rounded border">
+                    <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Response</h4>
+                    <div className="space-y-1 font-mono">
+                      <div>Status: <span className="text-teal-600 dark:text-teal-400">{debugInfo.status}</span></div>
+                      <div>Data Points: <span className="text-teal-600 dark:text-teal-400">{debugInfo.activityDataLength || 0}</span></div>
+                      <div>QR Codes: <span className="text-teal-600 dark:text-teal-400">{debugInfo.qrCodeCount || 0}</span></div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-card p-2 rounded border">
+                    <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Data Keys</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {debugInfo.dataKeys?.map((key: string) => (
+                        <span key={key} className="bg-muted px-1 py-0.5 rounded text-[10px] font-mono">{key}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-card p-2 rounded border">
+                  <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Raw JSON Response</h4>
+                  <pre className="bg-slate-950 p-2 rounded text-[10px] overflow-auto max-h-40 text-slate-300 font-mono">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </div>
+                
+                <div className="text-center">
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="text-[10px] bg-muted px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    Refresh Data
+                  </button>
+                </div>
+              </div>
+            </details>
+          </div>
         )}
       </CardContent>
     </Card>
