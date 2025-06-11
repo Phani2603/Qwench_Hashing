@@ -21,18 +21,22 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
   errorMessage?: string | null
 }) => {
   console.log("📊 Heat map received data:", scanData) // Debug log
-
   // Generate heat map data with proper date calculations
   const generateHeatMapData = () => {
     const months = timeframe === "12months" ? 12 : 6
     const today = new Date()
-    const startDate = new Date(today.getFullYear(), today.getMonth() - months + 1, 1)
+    // Use the exact current date for proper date range calculation
+    const startDate = new Date(today)
+    startDate.setMonth(today.getMonth() - months)
+    
+    console.log("🗓️ Heat map date range:", startDate.toDateString(), "to", today.toDateString())
     
     // Create scan lookup map for efficient access
     const scanMap = new Map()
     scanData.forEach(item => {
       const dateStr = new Date(item.date).toISOString().split('T')[0]
       scanMap.set(dateStr, (item.scans || 0))
+      console.log(`📅 Scan data mapped: ${dateStr} = ${item.scans} scans`)
     })
     
     // Find max scans for color scaling
@@ -55,14 +59,14 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
         else if (ratio >= 0.4) intensity = 2
         else intensity = 1
       }
-      
-      heatMapData.push({
+        heatMapData.push({
         date: dateStr,
         scans,
         intensity,
         dayOfWeek: current.getDay(),
         month: current.getMonth(),
-        day: current.getDate()
+        day: current.getDate(),
+        dateObj: new Date(current) // Store the actual date object for better formatting
       })
       
       current.setDate(current.getDate() + 1)
@@ -100,16 +104,16 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
     }
     weeks.push(currentWeek)
   }
-  
-  // Generate month labels with proper positioning
+    // Generate month labels with improved positioning and visibility
   const monthLabels: { month: string; position: number }[] = []
   const processedMonths = new Set()
   
   heatMapData.forEach((day, index) => {
-    if (day.day === 1 && !processedMonths.has(day.month)) {
+    // Create a label for the first day of each month
+    if (day.day === 1 || (index === 0 && !processedMonths.has(day.month))) {
       const weekIndex = Math.floor((index + (heatMapData[0]?.dayOfWeek || 0)) / 7)
       monthLabels.push({
-        month: new Date(2024, day.month).toLocaleDateString('en', { month: 'short' }),
+        month: day.dateObj.toLocaleDateString('en', { month: 'short' }),
         position: weekIndex
       })
       processedMonths.add(day.month)
@@ -198,47 +202,55 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
             )}
           </div>
           
-          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px] opacity-50">
-            {/* Weekday labels */}
+          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px] opacity-50">            {/* Weekday labels */}
             <div className="flex flex-col gap-1 pt-6 sm:pt-8">
               {weekdays.map((day, index) => (
-                <div key={day} className={`text-xs text-muted-foreground h-3 flex items-center ${index % 2 === 1 ? 'opacity-100' : 'opacity-0'}`}>
-                  {index % 2 === 1 ? day.slice(0, 3) : ''}
+                <div key={day} className={`text-xs text-muted-foreground h-3 flex items-center ${index % 2 === 0 ? 'opacity-100' : 'opacity-0'}`}>
+                  {index % 2 === 0 ? day.slice(0, 3) : ''}
                 </div>
               ))}
             </div>
             
             {/* Heat map grid */}
-            <div className="flex-1 min-w-0">
-              {/* Month labels */}
+            <div className="flex-1 min-w-0">              {/* Month labels */}
               <div className="h-6 sm:h-8 mb-1 flex items-center">
                 <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
-                  {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
-                    <div key={weekIndex} className="text-xs text-muted-foreground text-center">
-                      {weekIndex % 4 === 0 ? 
-                        ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Math.floor(weekIndex / 4) % 12] : ''}
+                  {/* Create month dividers for better visual guidance */}
+                  {monthLabels.map((label, index) => (
+                    <div 
+                      key={index} 
+                      className="text-xs text-muted-foreground font-medium relative"
+                      style={{ gridColumnStart: label.position + 1 }}
+                    >
+                      <div className="absolute -bottom-1 left-0 w-px h-2 bg-border"></div>
+                      <span className="bg-card px-0.5 relative z-10">{label.month}</span>
                     </div>
                   ))}
                 </div>
               </div>
               
-              {/* Grid */}
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
+              {/* Grid */}              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
                 {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
                   <div key={weekIndex} className="flex flex-col gap-1">
-                    {Array.from({ length: 7 }, (_, dayIndex) => (                      <div
-                        key={dayIndex}
-                        className={`
-                          w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 
-                          border border-slate-200 dark:border-slate-700/50 
-                          transition-all duration-300
-                          ${dayIndex === 3 && weekIndex === 10 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
-                          ${dayIndex === 2 && weekIndex === 15 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
-                          ${dayIndex === 4 && weekIndex === 20 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
-                        `}
-                        title="No activity yet"
-                      />
-                    ))}
+                    {Array.from({ length: 7 }, (_, dayIndex) => {                      // Highlight example activity day (at around 85% of the way through the timeline)
+                      const isRecentActivity = weekIndex === Math.floor(weeks.length * 0.85) && dayIndex === 2
+                      // Today's date 
+                      const isToday = weekIndex === Math.floor(weeks.length * 0.95) && dayIndex === 4
+                      
+                      return (
+                        <div
+                          key={dayIndex}
+                          className={`
+                            w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 
+                            border border-slate-200 dark:border-slate-700/50 
+                            transition-all duration-300
+                            ${isRecentActivity ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                            ${isToday ? 'ring-2 ring-primary' : ''}
+                          `}
+                          title={isRecentActivity ? "Recent activity example" : isToday ? "Today" : "No activity yet"}
+                        />
+                      )
+                    })}
                   </div>
                 ))}
               </div>
@@ -357,8 +369,33 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                     if (!day) {
                       return <div key={dayIndex} className="w-3 h-3" />
                     }
+                      // Format full date string for tooltip
+                    const dateStr = day.dateObj.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })                    // Check if this is today
+                    const isToday = new Date().toDateString() === day.dateObj.toDateString()
                     
-                    const dateStr = new Date(day.date).toLocaleDateString()
+                    // Find if this is the most recent day with activity (used to replace the hardcoded June 11th reference)
+                    // Get today's date and yesterday's date for comparison
+                    const today = new Date()
+                    const yesterday = new Date(today)
+                    yesterday.setDate(yesterday.getDate() - 1)
+                    
+                    // Logic for highlighting recent activity:
+                    // 1. Has scans
+                    // 2. Not today
+                    // 3. Within the last 7 days
+                    const dayDate = day.dateObj
+                    const sevenDaysAgo = new Date(today)
+                    sevenDaysAgo.setDate(today.getDate() - 7)
+                    
+                    const isRecentActivityDay = 
+                      day.scans > 0 && 
+                      !isToday && 
+                      dayDate >= sevenDaysAgo
                     
                     return (                      <div
                         key={dayIndex}
@@ -366,10 +403,12 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                           w-3 h-3 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:z-10
                           hover:ring-2 hover:ring-teal-400/70 hover:ring-opacity-70
                           animate-fadeIn
+                          ${isToday ? 'ring-2 ring-primary' : ''}
+                          ${isRecentActivityDay ? 'ring-1 ring-amber-400' : ''}
                           ${getIntensityColor(day.intensity)}
                         `}
                         style={{ animationDelay: `${(weekIndex * 7 + dayIndex) * 5}ms` }}
-                        title={`${dateStr}: ${day.scans} scans`}
+                        title={`${dateStr}: ${day.scans} ${day.scans === 1 ? 'scan' : 'scans'}${isToday ? ' (Today)' : ''}${isRecentActivityDay ? ' (Recent activity)' : ''}`}
                       />
                     )
                   })}
@@ -446,11 +485,9 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
         setError("Authentication required")
         setLoading(false)
         return
-      }
-
-      try {
-        // Convert timeframe to backend format
-        const backendTimeframe = timeframe === '6months' ? 'monthly' : 'monthly'
+      }      try {
+        // Convert timeframe to backend format - properly handle different time ranges
+        const backendTimeframe = timeframe === '6months' ? 'monthly' : 'yearly'
         const url = `${API_BASE_URL}/analytics/activity?timeframe=${backendTimeframe}`
         console.log("📡 Fetching from:", url) // Debug log
         
@@ -474,23 +511,32 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             activityDataLength: data.activityData?.length || 0,
             qrCodeCount: data.qrCodeCount || 0
           })
-          
-          if (data.success && Array.isArray(data.activityData)) {
-            // Ensure data is properly formatted for heat map
-            const formattedData = data.activityData.map((item: any) => ({
-              date: item.date || item.originalDate || item._id || 'Unknown',
-              scans: parseInt(item.scans) || parseInt(item.count) || 0
-            }))
+            if (data.success && Array.isArray(data.activityData)) {
+            // Ensure data is properly formatted for heat map and sort by date
+            const formattedData = data.activityData
+              .map((item: any) => ({
+                date: item.date || item.originalDate || item._id || 'Unknown',
+                scans: parseInt(item.scans) || parseInt(item.count) || 0,
+                // Add normalized date for sorting
+                normalizedDate: item.originalDate || (typeof item.date === 'string' && item.date.includes('-') ? item.date : null)
+              }))
+              // Sort by date to ensure proper timeline display
+              .sort((a: any, b: any) => {
+                if (a.normalizedDate && b.normalizedDate) {
+                  return a.normalizedDate.localeCompare(b.normalizedDate);
+                }
+                return 0;
+              });
             
             console.log("✅ Formatted data:", formattedData) // Debug log
-            setScanActivityData(formattedData)
+            setScanActivityData(formattedData)              // Check if there's no data to display
               if (formattedData.length === 0) {
-              // Check if the response contains info about QR codes
-              if (data.qrCodeCount === 0) {
-                setError("No QR codes found - please add QR codes first")
-              } else {
-                setError("No scan activity found for the selected timeframe")
-              }
+                // Check if the response contains info about QR codes
+                if (data.qrCodeCount === 0) {
+                  setError("No QR codes found - please add QR codes first")
+                } else {
+                  setError(`No scan activity found for the selected timeframe (${timeframe === '6months' ? 'last 6 months' : 'last year'})`)
+                }
             }
           } else {
             console.error("❌ Invalid response format:", data)

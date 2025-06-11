@@ -77,14 +77,14 @@ router.get("/activity", authenticate, async (req, res) => {
   try {
     const userId = req.user._id
     const { timeframe = 'daily' } = req.query
-    
-    // Find QR codes assigned to the user
+      // Find QR codes assigned to the user
     const userQRCodes = await QRCode.find({ assignedTo: userId })
     
     if (!userQRCodes || userQRCodes.length === 0) {
       return res.status(200).json({
         success: true,
-        activityData: []
+        activityData: [],
+        qrCodeCount: 0
       })
     }
 
@@ -94,8 +94,7 @@ router.get("/activity", authenticate, async (req, res) => {
     const now = new Date()
     let startDate
     let dateFormat
-    
-    switch (timeframe) {
+      switch (timeframe) {
       case 'weekly':
         startDate = new Date(now)
         startDate.setDate(now.getDate() - 28)  // Last 4 weeks
@@ -104,6 +103,11 @@ router.get("/activity", authenticate, async (req, res) => {
       case 'monthly': 
         startDate = new Date(now)
         startDate.setMonth(now.getMonth() - 6) // Last 6 months
+        dateFormat = { year: 'numeric', month: 'short' }
+        break
+      case 'yearly':
+        startDate = new Date(now)
+        startDate.setMonth(now.getMonth() - 12) // Last 12 months
         dateFormat = { year: 'numeric', month: 'short' }
         break
       case 'daily':
@@ -170,10 +174,10 @@ router.get("/activity", authenticate, async (req, res) => {
         scans
       }
     })
-    
-    res.status(200).json({
+      res.status(200).json({
       success: true,
-      activityData
+      activityData,
+      qrCodeCount: userQRCodes.length
     })
   } catch (error) {
     console.error("Error fetching scan activity:", error)
