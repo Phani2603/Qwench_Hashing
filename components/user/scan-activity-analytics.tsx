@@ -20,23 +20,51 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
   timeframe: string
   errorMessage?: string | null
 }) => {
-  console.log("📊 Heat map received data:", scanData) // Debug log
-  // Generate heat map data with proper date calculations
+  console.log("📊 Heat map received data:", scanData) // Debug log  // Generate heat map data with proper date calculations
   const generateHeatMapData = () => {
     const months = timeframe === "12months" ? 12 : 6
     const today = new Date()
-    // Use the exact current date for proper date range calculation
+    // Use the exact current date with time set to the end of day for proper date range
     const startDate = new Date(today)
     startDate.setMonth(today.getMonth() - months)
+    // Set to beginning of day
+    startDate.setHours(0, 0, 0, 0)
+    // Set today to end of day to include all today's activity
+    const endDate = new Date(today)
+    endDate.setHours(23, 59, 59, 999)
     
-    console.log("🗓️ Heat map date range:", startDate.toDateString(), "to", today.toDateString())
-    
-    // Create scan lookup map for efficient access
+    console.log("🗓️ Heat map date range:", startDate.toDateString(), "to", endDate.toDateString())
+      // Create scan lookup map for efficient access
     const scanMap = new Map()
     scanData.forEach(item => {
-      const dateStr = new Date(item.date).toISOString().split('T')[0]
-      scanMap.set(dateStr, (item.scans || 0))
-      console.log(`📅 Scan data mapped: ${dateStr} = ${item.scans} scans`)
+      let dateObj;
+      // Handle different date formats
+      try {
+        // Try parsing as ISO date first
+        if (typeof item.date === 'string' && item.date.includes('-')) {
+          // If it's already in YYYY-MM-DD format
+          dateObj = new Date(item.date);
+          // If date is invalid, try different format
+          if (isNaN(dateObj.getTime())) {
+            throw new Error("Invalid date format");
+          }
+        } else {
+          // Handle "Month Day, Year" format (e.g., "Jun 11, 2023")
+          dateObj = new Date(item.date);
+        }
+        
+        // Ensure we have a valid date
+        if (isNaN(dateObj.getTime())) {
+          console.warn(`📅 Invalid date: ${item.date}`);
+          return;
+        }
+        
+        const dateStr = dateObj.toISOString().split('T')[0];
+        scanMap.set(dateStr, (item.scans || 0));
+        console.log(`📅 Scan data mapped: ${dateStr} = ${item.scans} scans`);
+      } catch (err) {
+        console.warn(`📅 Error parsing date: ${item.date}`, err);
+      }
     })
     
     // Find max scans for color scaling
@@ -104,16 +132,30 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
     }
     weeks.push(currentWeek)
   }
-    // Generate month labels with improved positioning and visibility
+  // Generate month labels with improved positioning and visibility
   const monthLabels: { month: string; position: number }[] = []
   const processedMonths = new Set()
   
+  // Calculate appropriate positions for month labels
   heatMapData.forEach((day, index) => {
     // Create a label for the first day of each month
     if (day.day === 1 || (index === 0 && !processedMonths.has(day.month))) {
-      const weekIndex = Math.floor((index + (heatMapData[0]?.dayOfWeek || 0)) / 7)
+      // Calculate column position in the grid considering the day of the week offset
+      // This ensures alignment with the correct day cell in the heatmap
+      const weekIndex = Math.floor((index + heatMapData[0]?.dayOfWeek) / 7)
+      
+      // Format month label differently based on timeframe
+      let monthLabel;
+      if (timeframe === "12months") {
+        // For yearly view, include the month and shortened year
+        monthLabel = day.dateObj.toLocaleDateString('en', { month: 'short', year: '2-digit' })
+      } else {
+        // For 6-month view, just show the month
+        monthLabel = day.dateObj.toLocaleDateString('en', { month: 'short' })
+      }
+      
       monthLabels.push({
-        month: day.dateObj.toLocaleDateString('en', { month: 'short' }),
+        month: monthLabel,
         position: weekIndex
       })
       processedMonths.add(day.month)
@@ -186,7 +228,9 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
           </div>
         </div>
         
-        {/* Empty heat map structure */}        <div className="bg-card rounded-lg p-4 sm:p-6 border overflow-x-auto">          <div className="flex flex-col items-center mb-4">
+        {/* Empty heat map structure */}
+        <div className="bg-card rounded-lg p-4 sm:p-6 border overflow-x-auto">
+          <div className="flex flex-col items-center mb-4">
             {errorMessage?.includes("No QR codes") ? (
               <div className="bg-muted/40 rounded-full p-3 mb-3">
                 <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
@@ -202,7 +246,8 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
             )}
           </div>
           
-          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px] opacity-50">            {/* Weekday labels */}
+          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px] opacity-50">
+            {/* Weekday labels */}
             <div className="flex flex-col gap-1 pt-6 sm:pt-8">
               {weekdays.map((day, index) => (
                 <div key={day} className={`text-xs text-muted-foreground h-3 flex items-center ${index % 2 === 0 ? 'opacity-100' : 'opacity-0'}`}>
@@ -212,7 +257,8 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
             </div>
             
             {/* Heat map grid */}
-            <div className="flex-1 min-w-0">              {/* Month labels */}
+            <div className="flex-1 min-w-0">
+              {/* Month labels */}
               <div className="h-6 sm:h-8 mb-1 flex items-center">
                 <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
                   {/* Create month dividers for better visual guidance */}
@@ -229,13 +275,24 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                 </div>
               </div>
               
-              {/* Grid */}              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
-                {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
+              {/* Grid */}
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>                {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
                   <div key={weekIndex} className="flex flex-col gap-1">
-                    {Array.from({ length: 7 }, (_, dayIndex) => {                      // Highlight example activity day (at around 85% of the way through the timeline)
-                      const isRecentActivity = weekIndex === Math.floor(weeks.length * 0.85) && dayIndex === 2
-                      // Today's date 
-                      const isToday = weekIndex === Math.floor(weeks.length * 0.95) && dayIndex === 4
+                    {Array.from({ length: 7 }, (_, dayIndex) => {
+                      // Calculate actual dates based on weekIndex and dayIndex for accurate visualization
+                      const totalDays = weekIndex * 7 + dayIndex;
+                      const daysFromStart = totalDays - Math.floor(Math.min(weeks.length, 24) * 7 * 0.05); // Offset by 5% days
+                      
+                      const today = new Date();
+                      const dayDate = new Date(today);
+                      dayDate.setDate(today.getDate() - (Math.min(weeks.length, 24) * 7) + totalDays);
+                      
+                      // Determine if this represents today's date
+                      const isToday = dayDate.toDateString() === today.toDateString();
+                      
+                      // Example activity day - position it somewhere 2-3 weeks ago
+                      const exampleActivityPosition = Math.floor(Math.min(weeks.length, 24) * 0.85);
+                      const isExampleActivity = weekIndex === exampleActivityPosition && dayIndex === 2;
                       
                       return (
                         <div
@@ -244,10 +301,10 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                             w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 
                             border border-slate-200 dark:border-slate-700/50 
                             transition-all duration-300
-                            ${isRecentActivity ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                            ${isExampleActivity ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
                             ${isToday ? 'ring-2 ring-primary' : ''}
                           `}
-                          title={isRecentActivity ? "Recent activity example" : isToday ? "Today" : "No activity yet"}
+                          title={isExampleActivity ? "Example activity" : isToday ? "Today" : dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         />
                       )
                     })}
@@ -348,14 +405,14 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
           <div className="flex-1 min-w-0">
             {/* Month labels */}
             <div className="h-6 sm:h-8 mb-1 flex items-center">
-              <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(12px, 1fr))` }}>
-                {monthLabels.map((label, index) => (
+              <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(12px, 1fr))` }}>                {monthLabels.map((label, index) => (
                   <div 
                     key={index} 
-                    className="text-xs text-muted-foreground text-left"
+                    className="text-xs text-muted-foreground font-medium relative"
                     style={{ gridColumnStart: label.position + 1 }}
                   >
-                    {label.month}
+                    <div className="absolute -bottom-1 left-0 w-px h-2 bg-border"></div>
+                    <span className="bg-card px-0.5 relative z-10">{label.month}</span>
                   </div>
                 ))}
               </div>
@@ -364,33 +421,35 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
             {/* Date grid */}
             <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(12px, 1fr))` }}>
               {weeks.map((week, weekIndex) => (
-                <div key={weekIndex} className="flex flex-col gap-1">
-                  {week.map((day, dayIndex) => {
+                <div key={weekIndex} className="flex flex-col gap-1">                  {week.map((day, dayIndex) => {
                     if (!day) {
                       return <div key={dayIndex} className="w-3 h-3" />
                     }
-                      // Format full date string for tooltip
+                    
+                    // Format full date string for tooltip
                     const dateStr = day.dateObj.toLocaleDateString('en-US', {
                       weekday: 'short',
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric'
-                    })                    // Check if this is today
-                    const isToday = new Date().toDateString() === day.dateObj.toDateString()
+                    })
                     
-                    // Find if this is the most recent day with activity (used to replace the hardcoded June 11th reference)
-                    // Get today's date and yesterday's date for comparison
-                    const today = new Date()
-                    const yesterday = new Date(today)
-                    yesterday.setDate(yesterday.getDate() - 1)
+                    // Check if this is today's date
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isToday = today.getTime() === new Date(day.dateObj).setHours(0, 0, 0, 0);
+                    
+                    // Find if this is the most recent day with activity
+                    // Define the time window for "recent activity" - 7 days
+                    const sevenDaysAgo = new Date(today);
+                    sevenDaysAgo.setDate(today.getDate() - 7);
                     
                     // Logic for highlighting recent activity:
                     // 1. Has scans
                     // 2. Not today
                     // 3. Within the last 7 days
-                    const dayDate = day.dateObj
-                    const sevenDaysAgo = new Date(today)
-                    sevenDaysAgo.setDate(today.getDate() - 7)
+                    const dayDate = new Date(day.dateObj);
+                    dayDate.setHours(0, 0, 0, 0);
                     
                     const isRecentActivityDay = 
                       day.scans > 0 && 
@@ -468,58 +527,99 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
   const [debugInfo, setDebugInfo] = useState<any>(null)
   
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
-  
-  useEffect(() => {
+    useEffect(() => {
     const fetchScanActivity = async () => {
-      console.log("🔄 Fetching scan activity...") // Debug log
-      console.log("🔧 Token present:", !!token) // Debug log
-      console.log("🌐 API URL:", API_BASE_URL) // Debug log
-      console.log("📅 Timeframe:", timeframe) // Debug log
+      console.log("🔄 Fetching scan activity..."); // Debug log
+      console.log("🔧 Token present:", !!token); // Debug log
+      console.log("🌐 API URL:", API_BASE_URL); // Debug log
+      console.log("📅 Timeframe:", timeframe); // Debug log
       
-      setLoading(true)
-      setError(null)
-      setDebugInfo(null)
+      setLoading(true);
+      setError(null);
+      setDebugInfo(null);
       
       if (!token) {
-        console.log("❌ No token provided")
-        setError("Authentication required")
-        setLoading(false)
-        return
-      }      try {
+        console.log("❌ No token provided");
+        setError("Authentication required");
+        setLoading(false);
+        return;
+      }
+      
+      try {
         // Convert timeframe to backend format - properly handle different time ranges
-        const backendTimeframe = timeframe === '6months' ? 'monthly' : 'yearly'
-        const url = `${API_BASE_URL}/analytics/activity?timeframe=${backendTimeframe}`
-        console.log("📡 Fetching from:", url) // Debug log
+        // Fix the API timeframe parameter to correctly differentiate between 6 months and yearly views
+        const backendTimeframe = timeframe === '6months' ? 'monthly' : 'yearly';
+        const url = `${API_BASE_URL}/analytics/activity?timeframe=${backendTimeframe}`;
+        console.log("📡 Fetching from:", url); // Debug log
         
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        })
+        });
 
-        console.log("📨 Response status:", response.status) // Debug log
-        console.log("📨 Response headers:", Object.fromEntries(response.headers.entries())) // Debug log
-
+        console.log("📨 Response status:", response.status); // Debug log
+        console.log("📨 Response headers:", Object.fromEntries(response.headers.entries())); // Debug log
+        
         if (response.ok) {
-          const data = await response.json()
-          console.log("📦 Response data:", data) // Debug log
-            setDebugInfo({
+          const data = await response.json();
+          console.log("📦 Response data:", data); // Debug log
+          
+          // Enhanced debug information
+          setDebugInfo({
             status: response.status,
             dataKeys: Object.keys(data),
             hasActivityData: !!data.activityData,
             activityDataLength: data.activityData?.length || 0,
-            qrCodeCount: data.qrCodeCount || 0
-          })
-            if (data.success && Array.isArray(data.activityData)) {
+            qrCodeCount: data.qrCodeCount || 0,
+            timeframeInfo: {
+              requested: timeframe,
+              backend: backendTimeframe
+            },
+            dateRange: {
+              start: new Date(new Date().setMonth(new Date().getMonth() - (timeframe === '12months' ? 12 : 6))).toISOString().split('T')[0],
+              end: new Date().toISOString().split('T')[0]
+            },
+            apiUrl: url
+          });
+
+          if (data.success && Array.isArray(data.activityData)) {
             // Ensure data is properly formatted for heat map and sort by date
             const formattedData = data.activityData
-              .map((item: any) => ({
-                date: item.date || item.originalDate || item._id || 'Unknown',
-                scans: parseInt(item.scans) || parseInt(item.count) || 0,
-                // Add normalized date for sorting
-                normalizedDate: item.originalDate || (typeof item.date === 'string' && item.date.includes('-') ? item.date : null)
-              }))
+              .map((item: any) => {
+                // Capture all possible date formats
+                const dateValue = item.date || item.originalDate || item._id || 'Unknown';
+                // Parse scan count reliably
+                const scanCount = parseInt(item.scans) || parseInt(item.count) || 0;
+                
+                // Create a normalized date for proper sorting
+                let normalizedDate;
+                
+                // Handle different date formats from API
+                if (item.originalDate && typeof item.originalDate === 'string' && item.originalDate.includes('-')) {
+                  normalizedDate = item.originalDate;
+                } else if (typeof dateValue === 'string' && dateValue.includes('-')) {
+                  normalizedDate = dateValue;
+                } else if (typeof dateValue === 'string') {
+                  // Try to parse date formats like "Jun 2023" or "Week 24, 2023"
+                  try {
+                    const parsedDate = new Date(dateValue);
+                    if (!isNaN(parsedDate.getTime())) {
+                      normalizedDate = parsedDate.toISOString().split('T')[0];
+                    }
+                  } catch (e) {
+                    console.warn(`Failed to parse date: ${dateValue}`);
+                    normalizedDate = null;
+                  }
+                }
+                
+                return {
+                  date: dateValue,
+                  scans: scanCount,
+                  normalizedDate
+                };
+              })
               // Sort by date to ensure proper timeline display
               .sort((a: any, b: any) => {
                 if (a.normalizedDate && b.normalizedDate) {
@@ -543,15 +643,15 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             setError("Received invalid data format from server")
           }
         } else {
-          const errorText = await response.text()
-          console.error("❌ API Error:", response.status, errorText) // Debug log
-          setError(`Failed to load data (${response.status})`)
+          const errorText = await response.text();
+          console.error("❌ API Error:", response.status, errorText); // Debug log
+          setError(`Failed to load data (${response.status})`);
         }
       } catch (err) {
-        console.error("❌ Network error:", err) // Debug log
-        setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        console.error("❌ Network error:", err); // Debug log
+        setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
@@ -584,20 +684,20 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             <SelectItem value="12months">Last Year</SelectItem>
           </SelectContent>
         </Select>
-      </CardHeader>
-      <CardContent>
+      </CardHeader>      <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8 h-[250px]">
             <Loader2 className="h-8 w-8 animate-spin mr-3 text-teal-600" />
             <span className="text-muted-foreground">Loading scan activity...</span>
-          </div>        ) : error ? (
+          </div>
+        ) : error ? (
           <ScanActivityHeatMap scanData={[]} timeframe={timeframe} errorMessage={error} />
         ) : (
           <ScanActivityHeatMap scanData={scanActivityData} timeframe={timeframe} />
         )}
         
-        {/* Debug Panel - only visible during development or for admins */}
-        {debugInfo && error && (
+        {/* Enhanced Debug Panel with more useful diagnostic information */}
+        {debugInfo && (
           <div className="mt-6 border border-border rounded-lg p-3 bg-muted/20 text-xs">
             <details className="text-muted-foreground">
               <summary className="cursor-pointer flex items-center font-medium">
@@ -616,6 +716,17 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
                   </div>
                   
                   <div className="bg-card p-2 rounded border">
+                    <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Timeframe</h4>
+                    <div className="space-y-1 font-mono">
+                      <div>UI Setting: <span className="text-teal-600 dark:text-teal-400">{timeframe}</span></div>
+                      <div>API Parameter: <span className="text-teal-600 dark:text-teal-400">{timeframe === '6months' ? 'monthly' : 'yearly'}</span></div>
+                      <div>Date Range: <span className="text-teal-600 dark:text-teal-400">{timeframe === '6months' ? '6 months' : '12 months'}</span></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-card p-2 rounded border">
                     <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Data Keys</h4>
                     <div className="flex flex-wrap gap-1">
                       {debugInfo.dataKeys?.map((key: string) => (
@@ -623,10 +734,24 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
                       ))}
                     </div>
                   </div>
+                  
+                  <div className="bg-card p-2 rounded border">
+                    <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Data Sample</h4>
+                    <div className="overflow-hidden">
+                      {scanActivityData.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-1 text-[10px]">
+                          <div>First data: <span className="text-teal-600 dark:text-teal-400 font-mono">{JSON.stringify(scanActivityData[0]).substring(0, 30)}...</span></div>
+                          <div>Last data: <span className="text-teal-600 dark:text-teal-400 font-mono">{JSON.stringify(scanActivityData[scanActivityData.length-1]).substring(0, 30)}...</span></div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">No data available</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="bg-card p-2 rounded border">
-                  <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Raw JSON Response</h4>
+                  <h4 className="font-semibold mb-1 text-[11px] uppercase text-muted-foreground">Raw Debug Info</h4>
                   <pre className="bg-slate-950 p-2 rounded text-[10px] overflow-auto max-h-40 text-slate-300 font-mono">
                     {JSON.stringify(debugInfo, null, 2)}
                   </pre>
