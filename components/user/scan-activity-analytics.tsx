@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Activity, Loader2, AlertCircle } from "lucide-react"
 
 interface ScanActivityData {
@@ -14,34 +14,12 @@ interface ScanActivityAnalyticsProps {
   token?: string | null
 }
 
-// Helper function to format dates for display
-const formatDateForDisplay = (dateString: string, timeframe: string): string => {
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString // Return original if invalid
-    
-    switch (timeframe) {
-      case 'daily':
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      case 'weekly':
-        return `Week ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-      case 'monthly':
-        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-      default:
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-  } catch (error) {
-    console.error('Date formatting error:', error)
-    return dateString
-  }
-}
-
-// Enhanced activity chart component
-const ScanActivityChart = ({ scanData = [], timeframe = "daily" }: { 
+// GitHub-style heat map component with proper theme support
+const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: { 
   scanData: ScanActivityData[] 
   timeframe: string 
 }) => {
-  console.log("📊 Chart received data:", scanData) // Debug log
+  console.log("📊 Heat map received data:", scanData) // Debug log
   
   if (!scanData || scanData.length === 0) {
     return (
@@ -55,9 +33,68 @@ const ScanActivityChart = ({ scanData = [], timeframe = "daily" }: {
     )
   }
 
-  const maxValue = Math.max(...scanData.map(item => item.scans), 1)
+  // Generate date grid based on timeframe
+  const generateDateGrid = () => {
+    const today = new Date()
+    const days = timeframe === '12months' ? 365 : 180 // 6 months default
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - days)
+    
+    const dateGrid = []
+    const currentDate = new Date(startDate)
+    
+    while (currentDate <= today) {
+      dateGrid.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    return dateGrid
+  }
+
+  // Create scan data map for quick lookup
+  const scanMap = new Map()
+  scanData.forEach(item => {
+    const dateKey = new Date(item.date).toDateString()
+    scanMap.set(dateKey, item.scans)
+  })
+
+  const dateGrid = generateDateGrid()
+  const maxScans = Math.max(...scanData.map(item => item.scans), 1)
   const totalScans = scanData.reduce((sum, item) => sum + item.scans, 0)
-  
+
+  // Get intensity level (0-4) based on scan count
+  const getIntensity = (scans: number) => {
+    if (scans === 0) return 0
+    if (scans <= maxScans * 0.25) return 1
+    if (scans <= maxScans * 0.5) return 2
+    if (scans <= maxScans * 0.75) return 3
+    return 4
+  }
+
+  // Get weeks for grid layout
+  const getWeekRows = () => {
+    const weeks = []
+    let weekStart = new Date(dateGrid[0])
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()) // Start from Sunday
+    
+    while (weekStart <= dateGrid[dateGrid.length - 1] || weeks.length === 0) {
+      const week = []
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(weekStart)
+        date.setDate(weekStart.getDate() + i)
+        week.push(date)
+      }
+      weeks.push(week)
+      weekStart.setDate(weekStart.getDate() + 7)
+    }
+    
+    return weeks
+  }
+
+  const weeks = getWeekRows()
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
   return (
     <div className="w-full">
       {/* Summary stats */}
@@ -71,44 +108,99 @@ const ScanActivityChart = ({ scanData = [], timeframe = "daily" }: {
           <div className="text-xs text-muted-foreground">Active Days</div>
         </div>
         <div className="text-center p-3 bg-muted/50 rounded-lg">
-          <div className="text-2xl font-bold text-primary">{maxValue}</div>
+          <div className="text-2xl font-bold text-primary">{maxScans}</div>
           <div className="text-xs text-muted-foreground">Peak Activity</div>
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="h-[200px] mt-4">
-        <div className="flex items-end justify-center h-[160px] space-x-1 px-2">
-          {scanData.map((item, index) => {
-            const height = (item.scans / maxValue) * 140 // Max height 140px
-            const formattedDate = formatDateForDisplay(item.date, timeframe)
+      {/* Heat Map */}
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="overflow-x-auto">
+          {/* Month labels */}
+          <div className="flex mb-2 ml-12 text-xs text-muted-foreground">
+            {Array.from({ length: Math.ceil(weeks.length / 4.3) }, (_, i) => {
+              const monthIndex = (new Date().getMonth() - Math.ceil(weeks.length / 4.3) + i + 12) % 12
+              return (
+                <div key={i} className="flex-1 text-center min-w-[60px]">
+                  {months[monthIndex]}
+                </div>
+              )
+            })}
+          </div>
+          
+          {/* Heat map grid */}
+          <div className="flex gap-1">
+            {/* Weekday labels */}
+            <div className="flex flex-col gap-1 mr-2">
+              {weekdays.map((day, index) => (
+                <div key={day} className="h-3 flex items-center">
+                  <span className="text-xs text-muted-foreground w-8 text-right">
+                    {index % 2 === 1 ? day.slice(0, 3) : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
             
-            return (
-              <div key={index} className="flex flex-col items-center group flex-1 max-w-[50px]">
-                <div 
-                  className="bg-primary/70 hover:bg-primary rounded-t-sm transition-all duration-200 w-full group-hover:scale-105"
-                  style={{ 
-                    height: `${Math.max(height, 3)}px`,
-                    minHeight: '3px'
-                  }}
-                  title={`${formattedDate}: ${item.scans} scans`}
-                />
-                <span 
-                  className="text-[9px] text-muted-foreground mt-1 rotate-45 origin-left truncate w-[40px]"
-                  title={formattedDate}
-                >
-                  {formattedDate}
-                </span>
-              </div>
-            )
-          })}
+            {/* Date grid */}
+            <div className="flex gap-1">
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-1">
+                  {week.map((date, dayIndex) => {
+                    const dateKey = date.toDateString()
+                    const scans = scanMap.get(dateKey) || 0
+                    const intensity = getIntensity(scans)
+                    const isInRange = date >= dateGrid[0] && date <= dateGrid[dateGrid.length - 1]
+                    
+                    return (
+                      <div
+                        key={dayIndex}
+                        className={`
+                          w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-1 hover:ring-primary/50
+                          ${!isInRange ? 'opacity-30' : ''}
+                          ${intensity === 0 ? 'bg-muted border border-border' : ''}
+                          ${intensity === 1 ? 'bg-primary/20' : ''}
+                          ${intensity === 2 ? 'bg-primary/40' : ''}
+                          ${intensity === 3 ? 'bg-primary/60' : ''}
+                          ${intensity === 4 ? 'bg-primary/80' : ''}
+                        `}
+                        title={`${date.toLocaleDateString()}: ${scans} scans`}
+                      />
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="text-center mt-3 pt-2 border-t">
-          <span className="text-xs text-muted-foreground">
-            {timeframe === 'daily' ? 'Daily Activity (Last 14 Days)' : 
-             timeframe === 'weekly' ? 'Weekly Activity (Last 4 Weeks)' : 
-             'Monthly Activity (Last 6 Months)'}
-          </span>
+        
+        {/* Legend */}
+        <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>Less</span>
+            <div className="flex gap-1">
+              {[0, 1, 2, 3, 4].map(level => (
+                <div
+                  key={level}
+                  className={`
+                    w-3 h-3 rounded-sm
+                    ${level === 0 ? 'bg-muted border border-border' : ''}
+                    ${level === 1 ? 'bg-primary/20' : ''}
+                    ${level === 2 ? 'bg-primary/40' : ''}
+                    ${level === 3 ? 'bg-primary/60' : ''}
+                    ${level === 4 ? 'bg-primary/80' : ''}
+                  `}
+                />
+              ))}
+            </div>
+            <span>More</span>
+          </div>
+          <div className="text-muted-foreground">
+            {scanData.length > 0 && (
+              <span>
+                {timeframe === '12months' ? 'Last 12 months' : 'Last 6 months'} • {totalScans} total scans
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -116,7 +208,7 @@ const ScanActivityChart = ({ scanData = [], timeframe = "daily" }: {
 }
 
 const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) => {
-  const [timeframe, setTimeframe] = useState("daily")
+  const [timeframe, setTimeframe] = useState("6months")
   const [scanActivityData, setScanActivityData] = useState<ScanActivityData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,7 +235,9 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
       }
 
       try {
-        const url = `${API_BASE_URL}/analytics/activity?timeframe=${timeframe}`
+        // Convert timeframe to backend format
+        const backendTimeframe = timeframe === '6months' ? 'monthly' : 'monthly'
+        const url = `${API_BASE_URL}/analytics/activity?timeframe=${backendTimeframe}`
         console.log("📡 Fetching from:", url) // Debug log
         
         const response = await fetch(url, {
@@ -168,9 +262,9 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
           })
           
           if (data.success && Array.isArray(data.activityData)) {
-            // Ensure data is properly formatted
+            // Ensure data is properly formatted for heat map
             const formattedData = data.activityData.map((item: any) => ({
-              date: item.date || item._id || 'Unknown',
+              date: item.date || item.originalDate || item._id || 'Unknown',
               scans: parseInt(item.scans) || parseInt(item.count) || 0
             }))
             
@@ -191,7 +285,8 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
         }
       } catch (err) {
         console.error("❌ Network error:", err) // Debug log
-        setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`)      } finally {
+        setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      } finally {
         setLoading(false)
       }
     }
@@ -205,10 +300,10 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
         <div>
           <CardTitle className="flex items-center space-x-2">
             <Activity className="h-5 w-5" />
-            <span>Scan Activity</span>
+            <span>Scan Activity Heat Map</span>
           </CardTitle>
           <CardDescription>
-            Track QR code usage trends over time
+            Visual activity patterns over time - darker squares indicate more scans
             {debugInfo && (
               <span className="ml-2 text-xs bg-muted px-2 py-1 rounded">
                 Debug: {debugInfo.activityDataLength} data points
@@ -216,13 +311,15 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             )}
           </CardDescription>
         </div>
-        <Tabs defaultValue="daily" value={timeframe} onValueChange={setTimeframe} className="w-auto">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="daily">Daily</TabsTrigger>
-            <TabsTrigger value="weekly">Weekly</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <Select value={timeframe} onValueChange={setTimeframe}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="6months">Last 6 Months</SelectItem>
+            <SelectItem value="12months">Last Year</SelectItem>
+          </SelectContent>
+        </Select>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -250,7 +347,7 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             </button>
           </div>
         ) : (
-          <ScanActivityChart scanData={scanActivityData} timeframe={timeframe} />
+          <ScanActivityHeatMap scanData={scanActivityData} timeframe={timeframe} />
         )}
       </CardContent>
     </Card>
