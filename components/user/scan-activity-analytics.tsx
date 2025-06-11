@@ -14,156 +14,268 @@ interface ScanActivityAnalyticsProps {
   token?: string | null
 }
 
-// GitHub-style heat map component with proper theme support
+// Enhanced GitHub-style heat map with beautiful turquoise/green colors and better alignment
 const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: { 
   scanData: ScanActivityData[] 
   timeframe: string 
 }) => {
   console.log("📊 Heat map received data:", scanData) // Debug log
-  
-  if (!scanData || scanData.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[250px] bg-muted/20 rounded-lg">
-        <Activity className="h-12 w-12 text-muted-foreground mb-2" />
-        <p className="text-muted-foreground font-medium">No scan activity data available</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          QR codes need to be scanned to show activity trends
-        </p>
-      </div>
-    )
-  }
 
-  // Generate date grid based on timeframe
-  const generateDateGrid = () => {
+  // Generate heat map data with proper date calculations
+  const generateHeatMapData = () => {
+    const months = timeframe === "12months" ? 12 : 6
     const today = new Date()
-    const days = timeframe === '12months' ? 365 : 180 // 6 months default
-    const startDate = new Date(today)
-    startDate.setDate(today.getDate() - days)
+    const startDate = new Date(today.getFullYear(), today.getMonth() - months + 1, 1)
     
-    const dateGrid = []
-    const currentDate = new Date(startDate)
+    // Create scan lookup map for efficient access
+    const scanMap = new Map()
+    scanData.forEach(item => {
+      const dateStr = new Date(item.date).toISOString().split('T')[0]
+      scanMap.set(dateStr, (item.scans || 0))
+    })
     
-    while (currentDate <= today) {
-      dateGrid.push(new Date(currentDate))
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
+    // Find max scans for color scaling
+    const maxScans = Math.max(...Array.from(scanMap.values()), 1)
     
-    return dateGrid
-  }
-
-  // Create scan data map for quick lookup
-  const scanMap = new Map()
-  scanData.forEach(item => {
-    const dateKey = new Date(item.date).toDateString()
-    scanMap.set(dateKey, item.scans)
-  })
-
-  const dateGrid = generateDateGrid()
-  const maxScans = Math.max(...scanData.map(item => item.scans), 1)
-  const totalScans = scanData.reduce((sum, item) => sum + item.scans, 0)
-
-  // Get intensity level (0-4) based on scan count
-  const getIntensity = (scans: number) => {
-    if (scans === 0) return 0
-    if (scans <= maxScans * 0.25) return 1
-    if (scans <= maxScans * 0.5) return 2
-    if (scans <= maxScans * 0.75) return 3
-    return 4
-  }
-
-  // Get weeks for grid layout
-  const getWeekRows = () => {
-    const weeks = []
-    let weekStart = new Date(dateGrid[0])
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()) // Start from Sunday
+    // Generate all dates in the range
+    const heatMapData = []
+    const current = new Date(startDate)
     
-    while (weekStart <= dateGrid[dateGrid.length - 1] || weeks.length === 0) {
-      const week = []
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(weekStart)
-        date.setDate(weekStart.getDate() + i)
-        week.push(date)
+    while (current <= today) {
+      const dateStr = current.toISOString().split('T')[0]
+      const scans = scanMap.get(dateStr) || 0
+      
+      // Calculate intensity level (0-4) with beautiful scaling
+      let intensity = 0
+      if (scans > 0) {
+        const ratio = scans / maxScans
+        if (ratio >= 0.8) intensity = 4
+        else if (ratio >= 0.6) intensity = 3
+        else if (ratio >= 0.4) intensity = 2
+        else intensity = 1
       }
-      weeks.push(week)
-      weekStart.setDate(weekStart.getDate() + 7)
+      
+      heatMapData.push({
+        date: dateStr,
+        scans,
+        intensity,
+        dayOfWeek: current.getDay(),
+        month: current.getMonth(),
+        day: current.getDate()
+      })
+      
+      current.setDate(current.getDate() + 1)
     }
     
-    return weeks
+    return heatMapData
   }
-
-  const weeks = getWeekRows()
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  
+  const heatMapData = generateHeatMapData()
+  
+  // Group data by weeks for proper grid layout
+  const weeks: (any | null)[][] = []
+  let currentWeek: (any | null)[] = []
+  
+  heatMapData.forEach((day, index) => {
+    if (index === 0) {
+      // Add empty cells for the first week to align with day of week
+      for (let i = 0; i < day.dayOfWeek; i++) {
+        currentWeek.push(null)
+      }
+    }
+    
+    currentWeek.push(day)
+    
+    if (currentWeek.length === 7) {
+      weeks.push([...currentWeek])
+      currentWeek = []
+    }
+  })
+  
+  // Add remaining days to last week
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) {
+      currentWeek.push(null)
+    }
+    weeks.push(currentWeek)
+  }
+  
+  // Generate month labels with proper positioning
+  const monthLabels: { month: string; position: number }[] = []
+  const processedMonths = new Set()
+  
+  heatMapData.forEach((day, index) => {
+    if (day.day === 1 && !processedMonths.has(day.month)) {
+      const weekIndex = Math.floor((index + (heatMapData[0]?.dayOfWeek || 0)) / 7)
+      monthLabels.push({
+        month: new Date(2024, day.month).toLocaleDateString('en', { month: 'short' }),
+        position: weekIndex
+      })
+      processedMonths.add(day.month)
+    }
+  })
+  
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-  return (
-    <div className="w-full">
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="text-center p-3 bg-muted/50 rounded-lg">
-          <div className="text-2xl font-bold text-primary">{totalScans}</div>
-          <div className="text-xs text-muted-foreground">Total Scans</div>
+  
+  // Calculate statistics
+  const totalScans = heatMapData.reduce((sum, day) => sum + day.scans, 0)
+  const activeDays = heatMapData.filter(day => day.scans > 0).length
+  const peakActivity = Math.max(...heatMapData.map(day => day.scans))
+  
+  // Get intensity color classes with beautiful turquoise/green theme
+  const getIntensityColor = (intensity: number) => {
+    switch (intensity) {
+      case 0: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
+      case 1: return 'bg-teal-100 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50'
+      case 2: return 'bg-teal-300 dark:bg-teal-700/60 border border-teal-400 dark:border-teal-600'
+      case 3: return 'bg-teal-500 dark:bg-teal-600 border border-teal-600 dark:border-teal-500'
+      case 4: return 'bg-teal-700 dark:bg-teal-500 border border-teal-800 dark:border-teal-400'
+      default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
+    }
+  }
+  
+  // Show heat map even with no data
+  if (totalScans === 0) {
+    return (
+      <div className="w-full">
+        <div className="mb-6 text-center">
+          <h3 className="text-lg font-semibold mb-2">Scan Activity Heat Map</h3>
+          <p className="text-sm text-muted-foreground">
+            No scan activity yet - start scanning QR codes to see your activity pattern!
+          </p>
         </div>
-        <div className="text-center p-3 bg-muted/50 rounded-lg">
-          <div className="text-2xl font-bold text-primary">{scanData.length}</div>
-          <div className="text-xs text-muted-foreground">Active Days</div>
-        </div>
-        <div className="text-center p-3 bg-muted/50 rounded-lg">
-          <div className="text-2xl font-bold text-primary">{maxScans}</div>
-          <div className="text-xs text-muted-foreground">Peak Activity</div>
-        </div>
-      </div>
-
-      {/* Heat Map */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <div className="overflow-x-auto">
-          {/* Month labels */}
-          <div className="flex mb-2 ml-12 text-xs text-muted-foreground">
-            {Array.from({ length: Math.ceil(weeks.length / 4.3) }, (_, i) => {
-              const monthIndex = (new Date().getMonth() - Math.ceil(weeks.length / 4.3) + i + 12) % 12
-              return (
-                <div key={i} className="flex-1 text-center min-w-[60px]">
-                  {months[monthIndex]}
-                </div>
-              )
-            })}
-          </div>
-          
-          {/* Heat map grid */}
-          <div className="flex gap-1">
+        
+        {/* Empty heat map structure */}
+        <div className="bg-card rounded-lg p-4 sm:p-6 border overflow-x-auto">
+          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px]">
             {/* Weekday labels */}
-            <div className="flex flex-col gap-1 mr-2">
+            <div className="flex flex-col gap-1 pt-6 sm:pt-8">
               {weekdays.map((day, index) => (
-                <div key={day} className="h-3 flex items-center">
-                  <span className="text-xs text-muted-foreground w-8 text-right">
-                    {index % 2 === 1 ? day.slice(0, 3) : ''}
-                  </span>
+                <div key={day} className={`text-xs text-muted-foreground h-3 flex items-center ${index % 2 === 1 ? 'opacity-100' : 'opacity-0'}`}>
+                  {index % 2 === 1 ? day.slice(0, 3) : ''}
                 </div>
               ))}
             </div>
             
+            {/* Heat map grid */}
+            <div className="flex-1 min-w-0">
+              {/* Month labels */}
+              <div className="h-6 sm:h-8 mb-1 flex items-center">
+                <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
+                  {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
+                    <div key={weekIndex} className="text-xs text-muted-foreground text-center">
+                      {weekIndex % 4 === 0 ? 'Jan' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Grid */}
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
+                {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
+                  <div key={weekIndex} className="flex flex-col gap-1">
+                    {Array.from({ length: 7 }, (_, dayIndex) => (
+                      <div
+                        key={dayIndex}
+                        className="w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50"
+                        title="No activity"
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* Legend */}
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>Less</span>
+              <div className="flex gap-1">
+                {[0, 1, 2, 3, 4].map(intensity => (
+                  <div
+                    key={intensity}
+                    className={`w-3 h-3 rounded-sm ${getIntensityColor(intensity)}`}
+                  />
+                ))}
+              </div>
+              <span>More</span>
+            </div>
+            <div className="text-center sm:text-right">
+              <div>Ready to track your scan activity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full">
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 rounded-lg border border-teal-200 dark:border-teal-800">
+          <div className="text-lg sm:text-2xl font-bold text-teal-700 dark:text-teal-300">{totalScans}</div>
+          <div className="text-xs text-teal-600 dark:text-teal-400">Total Scans</div>
+        </div>
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 rounded-lg border border-emerald-200 dark:border-emerald-800">
+          <div className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">{activeDays}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">Active Days</div>
+        </div>
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 rounded-lg border border-cyan-200 dark:border-cyan-800">
+          <div className="text-lg sm:text-2xl font-bold text-cyan-700 dark:text-cyan-300">{peakActivity}</div>
+          <div className="text-xs text-cyan-600 dark:text-cyan-400">Peak Activity</div>
+        </div>
+      </div>
+
+      {/* Heat Map */}
+      <div className="bg-card border border-border rounded-lg p-4 sm:p-6 overflow-x-auto">
+        <div className="flex items-start gap-2 sm:gap-4 min-w-[640px]">
+          {/* Weekday labels */}
+          <div className="flex flex-col gap-1 pt-6 sm:pt-8 flex-shrink-0">
+            {weekdays.map((day, index) => (
+              <div key={day} className={`text-xs text-muted-foreground h-3 flex items-center w-8 ${index % 2 === 1 ? 'opacity-100' : 'opacity-0'}`}>
+                {index % 2 === 1 ? day.slice(0, 3) : ''}
+              </div>
+            ))}
+          </div>
+          
+          {/* Heat map grid */}
+          <div className="flex-1 min-w-0">
+            {/* Month labels */}
+            <div className="h-6 sm:h-8 mb-1 flex items-center">
+              <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(12px, 1fr))` }}>
+                {monthLabels.map((label, index) => (
+                  <div 
+                    key={index} 
+                    className="text-xs text-muted-foreground text-left"
+                    style={{ gridColumnStart: label.position + 1 }}
+                  >
+                    {label.month}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
             {/* Date grid */}
-            <div className="flex gap-1">
+            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(12px, 1fr))` }}>
               {weeks.map((week, weekIndex) => (
                 <div key={weekIndex} className="flex flex-col gap-1">
-                  {week.map((date, dayIndex) => {
-                    const dateKey = date.toDateString()
-                    const scans = scanMap.get(dateKey) || 0
-                    const intensity = getIntensity(scans)
-                    const isInRange = date >= dateGrid[0] && date <= dateGrid[dateGrid.length - 1]
+                  {week.map((day, dayIndex) => {
+                    if (!day) {
+                      return <div key={dayIndex} className="w-3 h-3" />
+                    }
+                    
+                    const dateStr = new Date(day.date).toLocaleDateString()
                     
                     return (
                       <div
                         key={dayIndex}
                         className={`
-                          w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-1 hover:ring-primary/50
-                          ${!isInRange ? 'opacity-30' : ''}
-                          ${intensity === 0 ? 'bg-muted border border-border' : ''}
-                          ${intensity === 1 ? 'bg-primary/20' : ''}
-                          ${intensity === 2 ? 'bg-primary/40' : ''}
-                          ${intensity === 3 ? 'bg-primary/60' : ''}
-                          ${intensity === 4 ? 'bg-primary/80' : ''}
+                          w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-teal-400 hover:ring-opacity-50
+                          ${getIntensityColor(day.intensity)}
                         `}
-                        title={`${date.toLocaleDateString()}: ${scans} scans`}
+                        title={`${dateStr}: ${day.scans} scans`}
                       />
                     )
                   })}
@@ -174,32 +286,26 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
         </div>
         
         {/* Legend */}
-        <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>Less</span>
             <div className="flex gap-1">
               {[0, 1, 2, 3, 4].map(level => (
                 <div
                   key={level}
-                  className={`
-                    w-3 h-3 rounded-sm
-                    ${level === 0 ? 'bg-muted border border-border' : ''}
-                    ${level === 1 ? 'bg-primary/20' : ''}
-                    ${level === 2 ? 'bg-primary/40' : ''}
-                    ${level === 3 ? 'bg-primary/60' : ''}
-                    ${level === 4 ? 'bg-primary/80' : ''}
-                  `}
+                  className={`w-3 h-3 rounded-sm ${getIntensityColor(level)}`}
                 />
               ))}
             </div>
             <span>More</span>
           </div>
-          <div className="text-muted-foreground">
-            {scanData.length > 0 && (
-              <span>
-                {timeframe === '12months' ? 'Last 12 months' : 'Last 6 months'} • {totalScans} total scans
-              </span>
-            )}
+          <div className="text-center sm:text-right">
+            <div className="font-medium text-teal-600 dark:text-teal-400">
+              {timeframe === '12months' ? 'Last 12 months' : 'Last 6 months'} • {totalScans} total scans
+            </div>
+            <div className="text-muted-foreground">
+              Peak: {peakActivity} scans • Active: {activeDays} days
+            </div>
           </div>
         </div>
       </div>
@@ -296,10 +402,10 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
 
   return (
     <Card className="col-span-full bg-card">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="flex items-center space-x-2">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5 text-teal-600" />
             <span>Scan Activity Heat Map</span>
           </CardTitle>
           <CardDescription>
@@ -324,7 +430,7 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8 h-[250px]">
-            <Loader2 className="h-8 w-8 animate-spin mr-3 text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin mr-3 text-teal-600" />
             <span className="text-muted-foreground">Loading scan activity...</span>
           </div>
         ) : error ? (
