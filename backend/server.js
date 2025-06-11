@@ -200,6 +200,14 @@ try {
   console.error("❌ Error loading user analytics routes:", error.message)
 }
 
+// Health monitoring routes
+try {
+  app.use("/api/health", require("./routes/health"))
+  console.log("✅ Health monitoring routes loaded")
+} catch (error) {
+  console.error("❌ Error loading health monitoring routes:", error.message)
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack)

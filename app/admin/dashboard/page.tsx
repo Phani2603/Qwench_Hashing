@@ -30,7 +30,13 @@ function AdminDashboardContent() {
     regularUsers: 0,
     totalQRCodes: 0,
     totalCategories: 0,
-    systemStatus: "Online",
+    systemStatus: "Loading...",
+  })
+  const [systemMetrics, setSystemMetrics] = useState({
+    uptime: "Checking...",
+    dbConnected: false,
+    apiStatus: "Checking...",
+    uptimePercentage: "0",
   })
   const [loading, setLoading] = useState(true)
 
@@ -100,15 +106,118 @@ function AdminDashboardContent() {
             totalCategories: categoryData.categories?.length || 0,
           }
         }
-
+        
+        // Set basic stats
         setStats({
           ...userStats,
           ...qrStats,
           ...categoryStats,
-          systemStatus: "Online",
+          systemStatus: "Loading status...", // Will be updated by system metrics call
         })
+        
+        // Fetch system metrics
+        try {
+          // First try the admin analytics endpoint
+          let systemData = null;
+          try {
+            const systemResponse = await fetch(`${API_BASE_URL}/admin/analytics/system`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            });
+            
+            if (systemResponse.ok) {
+              const responseData = await systemResponse.json();
+              if (responseData.success && responseData.metrics) {
+                systemData = responseData;
+              }
+            }
+          } catch (adminApiError) {
+            console.log("Admin analytics API unavailable, falling back to health endpoint");
+          }
+          
+          // Next, fetch data from our health monitoring API which provides real-time status
+          const healthResponse = await fetch(`${API_BASE_URL}/health/status`);
+          
+          if (healthResponse.ok) {
+            const healthData = await healthResponse.json();
+            
+            if (healthData.success && healthData.health) {
+              const health = healthData.health;
+              
+              // Update system status using real data from health endpoint
+              setStats(prevStats => ({
+                ...prevStats,
+                systemStatus: health.systemStatus || "Unknown",
+              }));
+              
+              // Set system metrics using real data
+              setSystemMetrics({
+                uptime: health.uptime?.formatted || "Unknown",
+                dbConnected: health.services?.database === "Connected",
+                apiStatus: health.services?.api || "Unknown",
+                uptimePercentage: health.uptime?.percentage || "99.9",
+              });
+            } else if (systemData) {
+              // Fall back to admin analytics data if available
+              setStats(prevStats => ({
+                ...prevStats,
+                systemStatus: systemData.metrics.errorRate < 0.05 ? "Online" : "Degraded",
+              }));
+              
+              setSystemMetrics({
+                uptime: systemData.metrics.uptime || "Unknown",
+                dbConnected: !!systemData.metrics.dbStats,
+                apiStatus: systemData.metrics.responseTime < 200 ? "Operational" : "Degraded",
+                uptimePercentage: "99.9",
+              });
+            }
+          } else if (systemData) {
+            // Fall back to admin analytics data if available
+            setStats(prevStats => ({
+              ...prevStats,
+              systemStatus: systemData.metrics.errorRate < 0.05 ? "Online" : "Degraded",
+            }));
+            
+            setSystemMetrics({
+              uptime: systemData.metrics.uptime || "Unknown",
+              dbConnected: !!systemData.metrics.dbStats,
+              apiStatus: systemData.metrics.responseTime < 200 ? "Operational" : "Degraded",
+              uptimePercentage: "99.9",
+            });
+          }
+        } catch (systemErr) {
+          console.error("Error fetching system metrics:", systemErr);
+          setSystemMetrics({
+            uptime: "Unknown",
+            dbConnected: false,
+            apiStatus: "Unknown",
+            uptimePercentage: "Unknown",
+          });
+          
+          // Update system status on failure
+          setStats(prevStats => ({
+            ...prevStats,
+            systemStatus: "Degraded",
+          }))
+        }
+        
       } catch (err) {
         console.error("Error fetching dashboard stats:", err)
+        
+        // Set error statuses
+        setStats(prevStats => ({
+          ...prevStats,
+          systemStatus: "Error",
+        }))
+        
+        setSystemMetrics({
+          uptime: "Unknown",
+          dbConnected: false,
+          apiStatus: "Error",
+          uptimePercentage: "Unknown",
+        })
       } finally {
         setLoading(false)
       }
@@ -230,14 +339,22 @@ function AdminDashboardContent() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-green-500/20">
+            <Card className={`bg-card ${stats.systemStatus === "Online" ? "border-green-500/20" : stats.systemStatus === "Degraded" ? "border-amber-500/20" : "border-red-500/20"}`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                <Activity className="h-4 w-4 text-green-500" />
+                <Activity className={`h-4 w-4 ${stats.systemStatus === "Online" ? "text-green-500" : stats.systemStatus === "Degraded" ? "text-amber-500" : "text-red-500"}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-500">{stats.systemStatus}</div>
-                <p className="text-xs text-muted-foreground">All systems operational</p>
+                <div className={`text-2xl font-bold ${stats.systemStatus === "Online" ? "text-green-500" : stats.systemStatus === "Degraded" ? "text-amber-500" : "text-red-500"}`}>
+                  {stats.systemStatus}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.systemStatus === "Online" 
+                    ? "All systems operational" 
+                    : stats.systemStatus === "Degraded" 
+                      ? "Some systems experiencing issues" 
+                      : "System issues detected"}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -257,15 +374,31 @@ function AdminDashboardContent() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Database Status</p>
                     <div className="flex items-center space-x-2">
-                      <Database className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
+                      <Database className={`h-4 w-4 ${systemMetrics.dbConnected ? 'text-green-500' : 'text-red-500'}`} />
+                      <span className={`text-sm ${systemMetrics.dbConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {systemMetrics.dbConnected ? 'Connected' : 'Disconnected'}
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">API Status</p>
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-green-600 dark:text-green-400">Operational</span>
+                      <div className={`w-2 h-2 ${
+                        systemMetrics.apiStatus === "Operational" 
+                          ? "bg-green-500" 
+                          : systemMetrics.apiStatus === "Degraded" 
+                            ? "bg-amber-500" 
+                            : "bg-red-500"
+                      } rounded-full`}></div>
+                      <span className={`text-sm ${
+                        systemMetrics.apiStatus === "Operational" 
+                          ? "text-green-600 dark:text-green-400" 
+                          : systemMetrics.apiStatus === "Degraded" 
+                            ? "text-amber-600 dark:text-amber-400" 
+                            : "text-red-600 dark:text-red-400"
+                      }`}>
+                        {systemMetrics.apiStatus}
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -274,7 +407,12 @@ function AdminDashboardContent() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Server Uptime</p>
-                    <span className="text-sm font-medium">99.9%</span>
+                    <div className="flex flex-col">
+                      <span className={`text-sm font-medium ${parseFloat(systemMetrics.uptimePercentage) > 99.9 ? 'text-green-600 dark:text-green-400' : parseFloat(systemMetrics.uptimePercentage) > 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {systemMetrics.uptimePercentage}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">{systemMetrics.uptime}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
