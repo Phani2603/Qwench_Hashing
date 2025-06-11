@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Activity, Loader2, AlertCircle } from "lucide-react"
+import { Activity, Loader2, AlertCircle, Info as InfoIcon, Flame } from "lucide-react"
 
 interface ScanActivityData {
   date: string
@@ -15,9 +15,10 @@ interface ScanActivityAnalyticsProps {
 }
 
 // Enhanced GitHub-style heat map with beautiful turquoise/green colors and better alignment
-const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: { 
-  scanData: ScanActivityData[] 
-  timeframe: string 
+const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessage = "" }: { 
+  scanData: ScanActivityData[]
+  timeframe: string
+  errorMessage?: string | null
 }) => {
   console.log("📊 Heat map received data:", scanData) // Debug log
 
@@ -133,21 +134,69 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
       default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
     }
   }
-  
-  // Show heat map even with no data
+    // Show heat map even with no data
   if (totalScans === 0) {
     return (
-      <div className="w-full">
-        <div className="mb-6 text-center">
-          <h3 className="text-lg font-semibold mb-2">Scan Activity Heat Map</h3>
-          <p className="text-sm text-muted-foreground">
-            No scan activity yet - start scanning QR codes to see your activity pattern!
-          </p>
+      <div className="w-full">        <div className="mb-6 text-center">          <h3 className="text-lg font-semibold mb-2 flex items-center justify-center">
+            <span>Scan Activity Heat Map</span>
+            <div className="relative ml-2 group">
+              <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+              <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 invisible group-hover:visible bg-popover text-popover-foreground p-2 rounded shadow-lg text-xs w-64 z-50">
+                This heat map shows your QR code scan activity over time. Each colored square represents scans on a specific day.
+              </div>
+            </div>
+          </h3>          <div className="bg-muted/40 rounded-lg p-4 inline-block mb-3 max-w-md border-l-4 border-l-muted">
+            <p className="text-sm font-medium flex items-center">
+              {errorMessage?.includes("No QR codes") ? (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
+                  <span>No QR codes found</span>
+                </>
+              ) : (
+                <>
+                  <InfoIcon className="h-4 w-4 mr-2 text-blue-500" />
+                  <span>No scan activity detected yet</span>
+                </>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2 mb-3">
+              {errorMessage?.includes("No QR codes") ?
+                "You need to have QR codes created for your account before scan activity can be tracked. Contact an administrator to generate QR codes for you." :
+                "Your QR codes are created but haven't been scanned yet. Share your QR codes with others to start building your activity history."}
+            </p>
+            <div>
+              <a 
+                href={errorMessage?.includes("No QR codes") ? "/dashboard?action=request-qr-codes" : "/dashboard?action=view-qr-codes"} 
+                className={`text-xs px-3 py-1.5 rounded font-medium inline-flex items-center ${
+                  errorMessage?.includes("No QR codes")
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                    : "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                }`}
+              >
+                {errorMessage?.includes("No QR codes") ? "Request QR Codes" : "View My QR Codes"}
+                <span className="ml-1">→</span>
+              </a>
+            </div>
+          </div>
         </div>
         
-        {/* Empty heat map structure */}
-        <div className="bg-card rounded-lg p-4 sm:p-6 border overflow-x-auto">
-          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px]">
+        {/* Empty heat map structure */}        <div className="bg-card rounded-lg p-4 sm:p-6 border overflow-x-auto">          <div className="flex flex-col items-center mb-4">
+            {errorMessage?.includes("No QR codes") ? (
+              <div className="bg-muted/40 rounded-full p-3 mb-3">
+                <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+              </div>
+            ) : (
+              <div className="bg-muted/40 rounded-full p-3 mb-3 relative">
+                <Activity className="h-8 w-8 text-muted-foreground/50" />
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-300 opacity-20"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-teal-300/40"></span>
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-start gap-2 sm:gap-4 min-w-[640px] opacity-50">
             {/* Weekday labels */}
             <div className="flex flex-col gap-1 pt-6 sm:pt-8">
               {weekdays.map((day, index) => (
@@ -164,7 +213,8 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
                 <div className="grid gap-1 w-full" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
                   {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
                     <div key={weekIndex} className="text-xs text-muted-foreground text-center">
-                      {weekIndex % 4 === 0 ? 'Jan' : ''}
+                      {weekIndex % 4 === 0 ? 
+                        ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Math.floor(weekIndex / 4) % 12] : ''}
                     </div>
                   ))}
                 </div>
@@ -174,11 +224,17 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
               <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
                 {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
                   <div key={weekIndex} className="flex flex-col gap-1">
-                    {Array.from({ length: 7 }, (_, dayIndex) => (
-                      <div
+                    {Array.from({ length: 7 }, (_, dayIndex) => (                      <div
                         key={dayIndex}
-                        className="w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50"
-                        title="No activity"
+                        className={`
+                          w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 
+                          border border-slate-200 dark:border-slate-700/50 
+                          transition-all duration-300
+                          ${dayIndex === 3 && weekIndex === 10 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                          ${dayIndex === 2 && weekIndex === 15 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                          ${dayIndex === 4 && weekIndex === 20 ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                        `}
+                        title="No activity yet"
                       />
                     ))}
                   </div>
@@ -211,20 +267,54 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
   }
 
   return (
-    <div className="w-full">
-      {/* Summary stats */}
+    <div className="w-full">      {/* Summary stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
-        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 rounded-lg border border-teal-200 dark:border-teal-800">
-          <div className="text-lg sm:text-2xl font-bold text-teal-700 dark:text-teal-300">{totalScans}</div>
-          <div className="text-xs text-teal-600 dark:text-teal-400">Total Scans</div>
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 rounded-lg border border-teal-200 dark:border-teal-800 hover:shadow-md hover:shadow-teal-200/20 dark:hover:shadow-teal-900/30 transition-all duration-300 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+          <div className="flex justify-center items-center gap-2">
+            <div className="text-lg sm:text-2xl font-bold text-teal-700 dark:text-teal-300">{totalScans}</div>
+            {totalScans > 0 && <span className="text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded">100%</span>}
+          </div>          <div className="text-xs text-teal-600 dark:text-teal-400 flex items-center justify-center gap-1 group relative">
+            <Activity className="h-3 w-3" />
+            <span>Total Scans</span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible bg-popover text-popover-foreground text-[10px] p-1 rounded shadow-lg w-40 z-10">
+              Total number of QR code scans across all your codes
+            </div>
+          </div>
         </div>
-        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 rounded-lg border border-emerald-200 dark:border-emerald-800">
-          <div className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">{activeDays}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">Active Days</div>
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:shadow-md hover:shadow-emerald-200/20 dark:hover:shadow-emerald-900/30 transition-all duration-300 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+          <div className="flex justify-center items-center gap-2">
+            <div className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">{activeDays}</div>
+            {activeDays > 0 && totalScans > 0 && (
+              <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1 py-0.5 rounded">
+                {Math.round((activeDays / (timeframe === '12months' ? 365 : 180)) * 100)}%
+              </span>
+            )}
+          </div>          <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1 group relative">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Active Days</span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible bg-popover text-popover-foreground text-[10px] p-1 rounded shadow-lg w-40 z-10">
+              Total days with at least one scan recorded
+            </div>
+          </div>
         </div>
-        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 rounded-lg border border-cyan-200 dark:border-cyan-800">
-          <div className="text-lg sm:text-2xl font-bold text-cyan-700 dark:text-cyan-300">{peakActivity}</div>
-          <div className="text-xs text-cyan-600 dark:text-cyan-400">Peak Activity</div>
+        <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 rounded-lg border border-cyan-200 dark:border-cyan-800 hover:shadow-md hover:shadow-cyan-200/20 dark:hover:shadow-cyan-900/30 transition-all duration-300 animate-fadeIn" style={{ animationDelay: '300ms' }}>
+          <div className="flex justify-center items-center gap-2">
+            <div className="text-lg sm:text-2xl font-bold text-cyan-700 dark:text-cyan-300">{peakActivity}</div>
+            {peakActivity > 0 && totalScans > 0 && (
+              <span className="text-xs bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-1 py-0.5 rounded">
+                {Math.round((peakActivity / totalScans) * 100)}% max
+              </span>
+            )}
+          </div>          <div className="text-xs text-cyan-600 dark:text-cyan-400 flex items-center justify-center gap-1 group relative">
+            <Flame className="h-3 w-3" />
+            <span>Peak Activity</span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover:visible bg-popover text-popover-foreground text-[10px] p-1 rounded shadow-lg w-40 z-10">
+              Highest number of scans in a single day
+            </div>
+          </div>
         </div>
       </div>
 
@@ -268,13 +358,15 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
                     
                     const dateStr = new Date(day.date).toLocaleDateString()
                     
-                    return (
-                      <div
+                    return (                      <div
                         key={dayIndex}
                         className={`
-                          w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-teal-400 hover:ring-opacity-50
+                          w-3 h-3 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:z-10
+                          hover:ring-2 hover:ring-teal-400/70 hover:ring-opacity-70
+                          animate-fadeIn
                           ${getIntensityColor(day.intensity)}
                         `}
+                        style={{ animationDelay: `${(weekIndex * 7 + dayIndex) * 5}ms` }}
                         title={`${dateStr}: ${day.scans} scans`}
                       />
                     )
@@ -284,27 +376,41 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months" }: {
             </div>
           </div>
         </div>
-        
-        {/* Legend */}
+          {/* Legend */}
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>Less</span>
             <div className="flex gap-1">
-              {[0, 1, 2, 3, 4].map(level => (
-                <div
-                  key={level}
-                  className={`w-3 h-3 rounded-sm ${getIntensityColor(level)}`}
-                />
-              ))}
+              {[0, 1, 2, 3, 4].map(level => {
+                const tooltipText = level === 0 ? 'No activity' : 
+                  level === 1 ? '1-25% of peak' :
+                  level === 2 ? '26-50% of peak' :
+                  level === 3 ? '51-75% of peak' : '76-100% of peak';
+                  
+                return (
+                  <div
+                    key={level}
+                    className={`w-3 h-3 rounded-sm ${getIntensityColor(level)} cursor-help relative group`}
+                    title={tooltipText}
+                  >
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground rounded text-[10px] invisible group-hover:visible w-28 text-center shadow-lg z-10">
+                      {tooltipText}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <span>More</span>
           </div>
           <div className="text-center sm:text-right">
-            <div className="font-medium text-teal-600 dark:text-teal-400">
-              {timeframe === '12months' ? 'Last 12 months' : 'Last 6 months'} • {totalScans} total scans
-            </div>
-            <div className="text-muted-foreground">
-              Peak: {peakActivity} scans • Active: {activeDays} days
+            <div className="font-medium text-teal-600 dark:text-teal-400 flex items-center justify-center sm:justify-end gap-1">
+              <InfoIcon className="h-3 w-3 text-teal-500 mr-1" />
+              <span>{timeframe === '12months' ? 'Last 12 months' : 'Last 6 months'} • {totalScans} total scans</span>
+            </div>            <div className="text-muted-foreground">
+              Peak: {peakActivity} scans • Active: {activeDays} days ({
+                activeDays > 0 ? 
+                Math.round((activeDays / heatMapData.length) * 100) : 0
+              }% activity rate)
             </div>
           </div>
         </div>
@@ -359,12 +465,12 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
         if (response.ok) {
           const data = await response.json()
           console.log("📦 Response data:", data) // Debug log
-          
-          setDebugInfo({
+            setDebugInfo({
             status: response.status,
             dataKeys: Object.keys(data),
             hasActivityData: !!data.activityData,
-            activityDataLength: data.activityData?.length || 0
+            activityDataLength: data.activityData?.length || 0,
+            qrCodeCount: data.qrCodeCount || 0
           })
           
           if (data.success && Array.isArray(data.activityData)) {
@@ -376,9 +482,13 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             
             console.log("✅ Formatted data:", formattedData) // Debug log
             setScanActivityData(formattedData)
-            
-            if (formattedData.length === 0) {
-              setError("No scan activity found for the selected timeframe")
+              if (formattedData.length === 0) {
+              // Check if the response contains info about QR codes
+              if (data.qrCodeCount === 0) {
+                setError("No QR codes found - please add QR codes first")
+              } else {
+                setError("No scan activity found for the selected timeframe")
+              }
             }
           } else {
             console.error("❌ Invalid response format:", data)
@@ -451,7 +561,8 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             >
               Try refreshing the page
             </button>
-          </div>
+          </div>        ) : error ? (
+          <ScanActivityHeatMap scanData={[]} timeframe={timeframe} errorMessage={error} />
         ) : (
           <ScanActivityHeatMap scanData={scanActivityData} timeframe={timeframe} />
         )}
