@@ -126,12 +126,12 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
   // Get intensity color classes with beautiful turquoise/green theme
   const getIntensityColor = (intensity: number) => {
     switch (intensity) {
-      case 0: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
+      case 0: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-500 dark:border-slate-700/20'
       case 1: return 'bg-teal-100 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50'
       case 2: return 'bg-teal-300 dark:bg-teal-700/60 border border-teal-400 dark:border-teal-600'
       case 3: return 'bg-teal-500 dark:bg-teal-600 border border-teal-600 dark:border-teal-500'
       case 4: return 'bg-teal-700 dark:bg-teal-500 border border-teal-800 dark:border-teal-400'
-      default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
+      default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-500 dark:border-slate-700/20'
     }
   }
     // Show heat map even with no data
@@ -154,20 +154,22 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                 </>
               ) : (
                 <>
-                  <InfoIcon className="h-4 w-4 mr-2 text-blue-500" />
+                  <InfoIcon className="items-center h-4 w-4 mr-2 text-blue-500" />
                   <span>No scan activity detected yet</span>
                 </>
               )}
             </p>
             <p className="text-xs text-muted-foreground mt-2 mb-3">
               {errorMessage?.includes("No QR codes") ?
-                "You need to have QR codes created for your account before scan activity can be tracked. Contact an administrator to generate QR codes for you." :
-                "Your QR codes are created but haven't been scanned yet. Share your QR codes with others to start building your activity history."}
+              "Your QR codes are created but haven't been scanned yet. Share your QR codes with others to start building your activity history."
+              :
+                "You need to have QR codes created for your account before scan activity can be tracked. Contact an administrator to generate QR codes for you." 
+                }
             </p>
             <div>
               <a 
                 href={errorMessage?.includes("No QR codes") ? "/dashboard?action=request-qr-codes" : "/dashboard?action=view-qr-codes"} 
-                className={`text-xs px-3 py-1.5 rounded font-medium inline-flex items-center ${
+                className={`text-xs px-3 text-center py-1.5 rounded font-medium inline-flex items-center ${
                   errorMessage?.includes("No QR codes")
                     ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
                     : "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
