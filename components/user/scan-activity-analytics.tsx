@@ -8,6 +8,7 @@ import { Activity, Loader2, AlertCircle, Info as InfoIcon, Flame } from "lucide-
 interface ScanActivityData {
   date: string
   scans: number
+  normalizedDate?: string
 }
 
 interface ScanActivityAnalyticsProps {
@@ -20,7 +21,9 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
   timeframe: string
   errorMessage?: string | null
 }) => {
-  console.log("📊 Heat map received data:", scanData) // Debug log  // Generate heat map data with proper date calculations
+  console.log("📊 Heat map received data:", scanData) // Debug log  
+  
+  // Generate heat map data with proper date calculations
   const generateHeatMapData = () => {
     const months = timeframe === "12months" ? 12 : 6
     const today = new Date()
@@ -34,38 +37,66 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
     endDate.setHours(23, 59, 59, 999)
     
     console.log("🗓️ Heat map date range:", startDate.toDateString(), "to", endDate.toDateString())
-      // Create scan lookup map for efficient access
+    console.log("📈 Time range:", timeframe === "12months" ? "Last 12 months" : "Last 6 months")
+      
+    // Create scan lookup map for efficient access
     const scanMap = new Map()
+    console.log("🔍 Parsing scan data:", scanData)
+    
     scanData.forEach(item => {
       let dateObj;
       // Handle different date formats
       try {
-        // Try parsing as ISO date first
-        if (typeof item.date === 'string' && item.date.includes('-')) {
-          // If it's already in YYYY-MM-DD format
-          dateObj = new Date(item.date);
-          // If date is invalid, try different format
-          if (isNaN(dateObj.getTime())) {
-            throw new Error("Invalid date format");
+        // Use normalizedDate if available (more reliable)
+        if (item.normalizedDate) {
+          console.log(`📊 Processing normalized date: ${item.normalizedDate}`);
+          const parts = item.normalizedDate.split('-');
+          
+          if (parts.length >= 2) {
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+            
+            if (parts.length === 2) {
+              // For month-only format (2025-6)
+              // Use the 15th day of month as representative date
+              dateObj = new Date(year, month, 15);
+            } else if (parts.length === 3) {
+              // For full date format (2025-06-11)
+              const day = parseInt(parts[2]);
+              dateObj = new Date(year, month, day);
+            }
           }
-        } else {
-          // Handle "Month Day, Year" format (e.g., "Jun 11, 2023")
-          dateObj = new Date(item.date);
+        } else if (typeof item.date === 'string') {
+          console.log(`📊 Processing date string: ${item.date}`);
+          if (item.date.includes('-')) {
+            // If it's already in YYYY-MM-DD format
+            dateObj = new Date(item.date);
+          } else if (/^\w{3}\s\d{1,2}$/.test(item.date)) {
+            // Format like "Jun 10" - assume current year
+            const currentYear = new Date().getFullYear();
+            dateObj = new Date(`${item.date}, ${currentYear}`);
+          } else if (/^\w{3}\s\d{4}$/.test(item.date)) {
+            // Format like "Jun 2025" - use 15th as day
+            dateObj = new Date(`${item.date} 15`);
+          } else {
+            // Try general parsing
+            dateObj = new Date(item.date);
+          }
         }
         
         // Ensure we have a valid date
-        if (isNaN(dateObj.getTime())) {
-          console.warn(`📅 Invalid date: ${item.date}`);
+        if (!dateObj || isNaN(dateObj.getTime())) {
+          console.warn(`📅 Invalid date: ${item.date}, normalized: ${item.normalizedDate}`);
           return;
         }
         
         const dateStr = dateObj.toISOString().split('T')[0];
-        scanMap.set(dateStr, (item.scans || 0));
-        console.log(`📅 Scan data mapped: ${dateStr} = ${item.scans} scans`);
+        scanMap.set(dateStr, (parseInt(String(item.scans)) || 0));
+        console.log(`✅ Scan data mapped: ${dateStr} = ${item.scans} scans (original: ${item.date})`);
       } catch (err) {
         console.warn(`📅 Error parsing date: ${item.date}`, err);
       }
-    })
+    });
     
     // Find max scans for color scaling
     const maxScans = Math.max(...Array.from(scanMap.values()), 1)
@@ -87,23 +118,25 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
         else if (ratio >= 0.4) intensity = 2
         else intensity = 1
       }
-        heatMapData.push({
+      
+      heatMapData.push({
         date: dateStr,
         scans,
         intensity,
         dayOfWeek: current.getDay(),
         month: current.getMonth(),
         day: current.getDate(),
-        dateObj: new Date(current) // Store the actual date object for better formatting
+        dateObj: new Date(current), // Store the actual date object for better formatting
+        scanMap: scanMap // Store the scan map for access in the rendering
       })
       
       current.setDate(current.getDate() + 1)
     }
     
-    return heatMapData
+    return { heatMapData, scanMap, maxScans }
   }
   
-  const heatMapData = generateHeatMapData()
+  const { heatMapData, scanMap, maxScans } = generateHeatMapData()
   
   // Group data by weeks for proper grid layout
   const weeks: (any | null)[][] = []
@@ -132,6 +165,7 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
     }
     weeks.push(currentWeek)
   }
+
   // Generate month labels with improved positioning and visibility
   const monthLabels: { month: string; position: number }[] = []
   const processedMonths = new Set()
@@ -172,12 +206,12 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
   // Get intensity color classes with beautiful turquoise/green theme
   const getIntensityColor = (intensity: number) => {
     switch (intensity) {
-      case 0: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-500 dark:border-slate-700/20'
+      case 0: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
       case 1: return 'bg-teal-100 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50'
       case 2: return 'bg-teal-300 dark:bg-teal-700/60 border border-teal-400 dark:border-teal-600'
       case 3: return 'bg-teal-500 dark:bg-teal-600 border border-teal-600 dark:border-teal-500'
       case 4: return 'bg-teal-700 dark:bg-teal-500 border border-teal-800 dark:border-teal-400'
-      default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-500 dark:border-slate-700/20'
+      default: return 'bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50'
     }
   }
     // Show heat map even with no data
@@ -274,37 +308,47 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
                   ))}
                 </div>
               </div>
-              
-              {/* Grid */}
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>                {Array.from({ length: Math.min(weeks.length, 24) }, (_, weekIndex) => (
+                {/* Grid */}
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(weeks.length, 24)}, minmax(12px, 1fr))` }}>
+                {weeks.map((week, weekIndex) => (
                   <div key={weekIndex} className="flex flex-col gap-1">
-                    {Array.from({ length: 7 }, (_, dayIndex) => {
-                      // Calculate actual dates based on weekIndex and dayIndex for accurate visualization
-                      const totalDays = weekIndex * 7 + dayIndex;
-                      const daysFromStart = totalDays - Math.floor(Math.min(weeks.length, 24) * 7 * 0.05); // Offset by 5% days
+                    {week.map((day, dayIndex) => {
+                      if (!day) {
+                        return <div key={dayIndex} className="w-3 h-3" />
+                      }
                       
+                      // Format full date string for tooltip
+                      const dateStr = day.dateObj.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })
+                      
+                      // Check if this is today's date
                       const today = new Date();
-                      const dayDate = new Date(today);
-                      dayDate.setDate(today.getDate() - (Math.min(weeks.length, 24) * 7) + totalDays);
+                      today.setHours(0, 0, 0, 0);
+                      const isToday = today.getTime() === new Date(day.dateObj).setHours(0, 0, 0, 0);
                       
-                      // Determine if this represents today's date
-                      const isToday = dayDate.toDateString() === today.toDateString();
-                      
-                      // Example activity day - position it somewhere 2-3 weeks ago
-                      const exampleActivityPosition = Math.floor(Math.min(weeks.length, 24) * 0.85);
-                      const isExampleActivity = weekIndex === exampleActivityPosition && dayIndex === 2;
+                      // Define recent activity (within last 7 days)
+                      const sevenDaysAgo = new Date(today);
+                      sevenDaysAgo.setDate(today.getDate() - 7);
+                      const dayDate = new Date(day.dateObj);
+                      dayDate.setHours(0, 0, 0, 0);
+                      const isRecentActivity = day.scans > 0 && !isToday && dayDate >= sevenDaysAgo;
                       
                       return (
                         <div
                           key={dayIndex}
                           className={`
-                            w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-800/50 
-                            border border-slate-200 dark:border-slate-700/50 
+                            w-3 h-3 rounded-sm
                             transition-all duration-300
-                            ${isExampleActivity ? 'animate-pulse bg-teal-200 dark:bg-teal-800 border-teal-300 dark:border-teal-700' : ''}
+                            ${getIntensityColor(day.intensity)}
+                            ${day.scans > 0 ? 'hover:scale-125 hover:z-10 hover:ring-2 hover:ring-teal-400/70' : ''}
                             ${isToday ? 'ring-2 ring-primary' : ''}
+                            ${isRecentActivity ? 'ring-1 ring-amber-400' : ''}
                           `}
-                          title={isExampleActivity ? "Example activity" : isToday ? "Today" : dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          title={`${dateStr}: ${day.scans} ${day.scans === 1 ? 'scan' : 'scans'}`}
                         />
                       )
                     })}
