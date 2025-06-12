@@ -746,7 +746,7 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
         )}
         
         {/* Enhanced Debug Panel with more useful diagnostic information */}
-        {debugInfo && (
+        {/* {debugInfo && (
           <div className="mt-6 border border-border rounded-lg p-3 bg-muted/20 text-xs">
             <details className="text-muted-foreground">
               <summary className="cursor-pointer flex items-center font-medium">
@@ -817,7 +817,7 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
               </div>
             </details>
           </div>
-        )}
+        )} */}
       </CardContent>
     </Card>
   )
