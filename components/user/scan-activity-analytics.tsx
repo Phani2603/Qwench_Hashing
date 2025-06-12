@@ -564,7 +564,7 @@ const ScanActivityHeatMap = ({ scanData = [], timeframe = "6months", errorMessag
 }
 
 const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) => {
-  const [timeframe, setTimeframe] = useState("6months")
+  const [timeframe, setTimeframe] = useState("12months")
   const [scanActivityData, setScanActivityData] = useState<ScanActivityData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -718,7 +718,9 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
               </span>
             )}
           </CardDescription>
-        </div>
+        </div >
+        {/*
+        >div className ="hidden sm:block"> 
         <Select value={timeframe} onValueChange={setTimeframe}>
           <SelectTrigger className="w-36">
             <SelectValue />
@@ -728,7 +730,10 @@ const ScanActivityAnalytics: React.FC<ScanActivityAnalyticsProps> = ({ token }) 
             <SelectItem value="12months">Last Year</SelectItem>
           </SelectContent>
         </Select>
-      </CardHeader>      <CardContent>
+        </div>
+        */}
+      </CardHeader>
+            <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8 h-[250px]">
             <Loader2 className="h-8 w-8 animate-spin mr-3 text-teal-600" />
